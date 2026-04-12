@@ -297,7 +297,7 @@ function Section({ id, icon, iconColor, title, children }) {
 
 // ── Playbook Card (list view) ────────────────────────────────────────────────
 
-function PlaybookCard({ playbook, onOpen, onDelete }) {
+function PlaybookCard({ playbook, onOpen, onDelete, onCopy }) {
   const filledRules = playbook.entryRules.filter(r => r.text.trim()).length + playbook.exitRules.filter(r => r.text.trim()).length;
   const filledChecklist = playbook.checklist.filter(c => c.text.trim()).length;
   const updated = new Date(playbook.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -311,13 +311,22 @@ function PlaybookCard({ playbook, onOpen, onDelete }) {
         <p style={{ fontFamily: F.display, fontSize: 16, fontWeight: 600, color: C.textPrimary }}>
           {playbook.name || "Untitled Playbook"}
         </p>
-        <button
-          onClick={e => { e.stopPropagation(); onDelete(); }}
-          style={{ padding: "4px 8px", background: "transparent", border: "none", color: C.textMuted, fontFamily: F.mono, fontSize: 10, cursor: "pointer" }}
-          onMouseEnter={e => e.currentTarget.style.color = C.coral}
-          onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>
-          delete
-        </button>
+        <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+          <button
+            onClick={e => { e.stopPropagation(); onCopy(); }}
+            style={{ padding: "4px 8px", background: "transparent", border: "none", color: C.textMuted, fontFamily: F.mono, fontSize: 10, cursor: "pointer" }}
+            onMouseEnter={e => e.currentTarget.style.color = C.teal}
+            onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>
+            copy
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); onDelete(); }}
+            style={{ padding: "4px 8px", background: "transparent", border: "none", color: C.textMuted, fontFamily: F.mono, fontSize: 10, cursor: "pointer" }}
+            onMouseEnter={e => e.currentTarget.style.color = C.coral}
+            onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>
+            delete
+          </button>
+        </div>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
         {(Array.isArray(playbook.market) ? playbook.market : playbook.market ? [playbook.market] : []).map(m => (
@@ -549,6 +558,16 @@ function PlaybookEditor({ playbook, onSave, onBack }) {
 
 function PlaybookViewer({ playbook, onEdit, onBack }) {
   const pb = playbook;
+  const checklistItems = pb.checklist.filter(c => c.text.trim());
+  const [checked, setChecked] = useState({});
+  const checkedCount = Object.values(checked).filter(Boolean).length;
+  const allChecked = checklistItems.length > 0 && checkedCount === checklistItems.length;
+
+  const toggleCheck = (id) => {
+    setChecked(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const resetChecklist = () => setChecked({});
 
   return (
     <div>
@@ -679,16 +698,73 @@ function PlaybookViewer({ playbook, onEdit, onBack }) {
         </>
       )}
 
-      {/* Checklist */}
-      {pb.checklist.some(c => c.text.trim()) && (
+      {/* Interactive Checklist */}
+      {checklistItems.length > 0 && (
         <>
-          <Section icon="&#9744;" iconColor={C.amber} title="Pre-market checklist">
-            {pb.checklist.filter(c => c.text.trim()).map((c) => (
-              <div key={c.id} style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "flex-start" }}>
-                <span style={{ fontFamily: F.mono, fontSize: 14, color: C.amber, marginTop: 1 }}>&#9744;</span>
-                <p style={{ fontSize: 14, color: C.textSecondary, lineHeight: 1.7 }}>{c.text}</p>
+          <Section icon={allChecked ? "&#10003;" : "&#9744;"} iconColor={allChecked ? C.green : C.amber} title="Pre-market checklist">
+            {/* Progress bar */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontFamily: F.mono, fontSize: 10, color: allChecked ? C.green : C.textMuted }}>
+                  {checkedCount}/{checklistItems.length} complete
+                </span>
+                {checkedCount > 0 && (
+                  <button onClick={resetChecklist} style={{ padding: "2px 8px", background: "transparent", border: "none", color: C.textMuted, fontFamily: F.mono, fontSize: 10, cursor: "pointer" }}
+                    onMouseEnter={e => e.currentTarget.style.color = C.textSecondary}
+                    onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>
+                    reset
+                  </button>
+                )}
               </div>
-            ))}
+              <div style={{ height: 3, background: C.bgSurface, borderRadius: 2, overflow: "hidden" }}>
+                <div style={{
+                  height: "100%", borderRadius: 2, transition: "width 0.3s ease, background 0.3s ease",
+                  width: `${(checkedCount / checklistItems.length) * 100}%`,
+                  background: allChecked ? C.green : C.amber,
+                }} />
+              </div>
+            </div>
+
+            {/* Checklist items */}
+            {checklistItems.map((c) => {
+              const isChecked = !!checked[c.id];
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => toggleCheck(c.id)}
+                  style={{
+                    display: "flex", gap: 12, marginBottom: 6, alignItems: "flex-start", cursor: "pointer",
+                    padding: "10px 14px", borderRadius: 6, transition: "background 0.15s",
+                    background: isChecked ? `${C.green}0A` : "transparent",
+                    border: `1px solid ${isChecked ? `${C.green}22` : "transparent"}`,
+                  }}
+                  onMouseEnter={e => { if (!isChecked) e.currentTarget.style.background = `${C.bgSurface}66`; }}
+                  onMouseLeave={e => { if (!isChecked) e.currentTarget.style.background = "transparent"; }}
+                >
+                  <span style={{
+                    fontFamily: F.mono, fontSize: 16, flexShrink: 0, marginTop: -1, width: 20, textAlign: "center",
+                    color: isChecked ? C.green : C.amber, transition: "color 0.15s",
+                  }}>
+                    {isChecked ? "\u2713" : "\u2610"}
+                  </span>
+                  <p style={{
+                    fontSize: 14, lineHeight: 1.7, transition: "color 0.15s, text-decoration 0.15s",
+                    color: isChecked ? C.textMuted : C.textSecondary,
+                    textDecoration: isChecked ? "line-through" : "none",
+                  }}>
+                    {c.text}
+                  </p>
+                </div>
+              );
+            })}
+
+            {/* Completion message */}
+            {allChecked && (
+              <div style={{ marginTop: 12, padding: "10px 14px", background: `${C.green}0D`, border: `1px solid ${C.green}22`, borderRadius: 6, display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontFamily: F.mono, fontSize: 14, color: C.green }}>&#10003;</span>
+                <span style={{ fontFamily: F.mono, fontSize: 12, color: C.green }}>All items checked. Ready to trade.</span>
+              </div>
+            )}
           </Section>
           <div style={{ height: 1, background: C.border, marginBottom: 36 }} />
         </>
@@ -774,6 +850,21 @@ export default function PlaybookClient() {
     }
   };
 
+  const duplicatePlaybook = (id) => {
+    const source = playbooks.find(p => p.id === id);
+    if (!source) return;
+    const copy = {
+      ...JSON.parse(JSON.stringify(source)),
+      id: uid(),
+      name: source.name ? `${source.name} (copy)` : "Untitled Playbook (copy)",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const updated = [copy, ...playbooks];
+    setPlaybooks(updated);
+    savePlaybooks(updated);
+  };
+
   return (
     <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 20px" }}>
       {/* Nav */}
@@ -834,6 +925,7 @@ export default function PlaybookClient() {
                   playbook={pb}
                   onOpen={() => { setActiveId(pb.id); setView("view"); }}
                   onDelete={() => setDeleteTarget(pb.id)}
+                  onCopy={() => duplicatePlaybook(pb.id)}
                 />
               ))}
             </div>
