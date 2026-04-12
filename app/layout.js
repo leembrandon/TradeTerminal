@@ -1,6 +1,6 @@
 import "./globals.css";
 
-const siteUrl = "https://tradeterminal.vercel.app";
+const siteUrl = "https://tradesterminal.vercel.app";
 
 export const metadata = {
   metadataBase: new URL(siteUrl),
