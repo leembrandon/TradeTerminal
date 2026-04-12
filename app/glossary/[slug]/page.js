@@ -3,7 +3,7 @@ import { catMeta } from "@/lib/constants";
 import { notFound } from "next/navigation";
 import TermPageClient from "./TermPageClient";
 
-const siteUrl = "https://tradeterminal.vercel.app";
+const siteUrl = "https://tradesterminal.vercel.app";
 
 export async function generateStaticParams() {
   return glossaryTerms
