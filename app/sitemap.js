@@ -41,6 +41,7 @@ export default function sitemap() {
     { url: `${base}/markets`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/strategies`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/playbook`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${base}/journal`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
     ...firmPages,
     ...marketPages,
     ...strategyPages,
