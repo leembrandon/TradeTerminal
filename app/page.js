@@ -1,5 +1,25 @@
 import Link from "next/link";
 
+export const metadata = {
+  title: "TradeTerminal — Learn Futures Trading From the Ground Up",
+  description: "The complete futures trading education platform. 54 terms explained with real examples, real numbers, and zero fluff. Free, searchable, and built for traders.",
+  alternates: {
+    canonical: "https://tradesterminal.vercel.app",
+  },
+  openGraph: {
+    title: "TradeTerminal — Learn Futures Trading From the Ground Up",
+    description: "The complete futures trading education platform. 54 terms explained with real examples, real numbers, and zero fluff.",
+    url: "https://tradeterminal.vercel.app",
+    type: "website",
+    siteName: "TradeTerminal",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TradeTerminal — Learn Futures Trading From the Ground Up",
+    description: "The complete futures trading education platform. 54 terms explained with real examples, real numbers, and zero fluff.",
+  },
+};
+
 export default function Home() {
   const F = {
     display: "'JetBrains Mono', 'Fira Code', monospace",
