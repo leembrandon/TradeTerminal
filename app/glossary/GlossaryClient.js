@@ -2,10 +2,11 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { C, F } from "@/lib/constants";
+import { getSiteUrl } from "@/lib/utils";
 
-function ShareButton({ url, label }) {
+function ShareButton({ path, label }) {
   const [toast, setToast] = useState(false);
-  const copy = () => { navigator.clipboard.writeText(url).then(() => { setToast(true); setTimeout(() => setToast(false), 2000); }); };
+  const copy = () => { navigator.clipboard.writeText(getSiteUrl() + path).then(() => { setToast(true); setTimeout(() => setToast(false), 2000); }); };
   return (
     <div style={{ position: "relative", display: "inline-flex" }}>
       <button onClick={copy} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", background: "transparent", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textMuted, fontFamily: F.mono, fontSize: 10, cursor: "pointer" }}>
@@ -58,7 +59,7 @@ export default function GlossaryClient({ terms, catMeta }) {
           <span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>/</span>
           <span style={{ color: C.teal, fontFamily: F.mono, fontSize: 12 }}>glossary</span>
         </div>
-        <ShareButton url="https://tradeterminal.com/glossary" label="share glossary" />
+        <ShareButton path="/glossary" label="share glossary" />
       </div>
 
       <div style={{ padding: "36px 0 24px" }}>
@@ -74,7 +75,7 @@ export default function GlossaryClient({ terms, catMeta }) {
         <div style={{ flex: "1 1 300px", position: "relative" }}>
           <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.teal, fontFamily: F.mono, fontSize: 14 }}>{">"}</span>
           <input type="text" placeholder="search terms..." value={search} onChange={e => setSearch(e.target.value)}
-            style={{ width: "100%", padding: "12px 16px 12px 32px", background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 6, color: C.textPrimary, fontFamily: F.mono, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+            style={{ width: "100%", padding: "12px 16px 12px 32px", background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 6, color: C.textPrimary, fontFamily: F.mono, fontSize: 16, outline: "none", boxSizing: "border-box" }} />
         </div>
         <div style={{ display: "flex", gap: 2, background: C.bgCard, borderRadius: 6, border: `1px solid ${C.border}`, padding: 2 }}>
           {[{ id: "cards", label: "grid" }, { id: "alpha", label: "A-Z" }, { id: "category", label: "by topic" }].map(v => (

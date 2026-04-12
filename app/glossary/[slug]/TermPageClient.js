@@ -2,10 +2,12 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { C, F, catColors } from "@/lib/constants";
+import { getSiteUrl } from "@/lib/utils";
 
-function ShareBtn({ text, url, label, small }) {
+function ShareBtn({ text, path, label, small }) {
   const [toast, setToast] = useState(false);
   const copy = () => {
+    const url = getSiteUrl() + path;
     const s = text ? `"${text}"\n\nvia TradeTerminal_\n${url}` : url;
     navigator.clipboard.writeText(s).then(() => { setToast(true); setTimeout(() => setToast(false), 2000); });
   };
@@ -19,7 +21,7 @@ function ShareBtn({ text, url, label, small }) {
 
 function SectionAnchor({ id, slug }) {
   const [toast, setToast] = useState(false);
-  const copy = () => { navigator.clipboard.writeText(`https://tradeterminal.com/glossary/${slug}#${id}`).then(() => { setToast(true); setTimeout(() => setToast(false), 2000); }); };
+  const copy = () => { navigator.clipboard.writeText(`${getSiteUrl()}/glossary/${slug}#${id}`).then(() => { setToast(true); setTimeout(() => setToast(false), 2000); }); };
   return (
     <span onClick={e => { e.stopPropagation(); copy(); }} style={{ cursor: "pointer", opacity: 0.3, display: "inline-flex", alignItems: "center", position: "relative" }}
       onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = 0.3}>
@@ -34,7 +36,7 @@ export default function TermPageClient({ term, prev, next }) {
   const [activeSection, setActiveSection] = useState(null);
   const [showTop, setShowTop] = useState(false);
   const catColor = catColors[term.category] || C.teal;
-  const baseUrl = `https://tradeterminal.com/glossary/${term.slug}`;
+  const basePath = `/glossary/${term.slug}`;
 
   const readTime = useMemo(() => {
     let w = 0;
@@ -88,7 +90,7 @@ export default function TermPageClient({ term, prev, next }) {
           <span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>/</span>
           <span style={{ color: C.teal, fontFamily: F.mono, fontSize: 12 }}>{term.term.toLowerCase()}</span>
         </div>
-        <ShareBtn url={baseUrl} label="share this term" />
+        <ShareBtn path={basePath} label="share this term" />
       </div>
 
       <div style={{ display: "flex", gap: 40, paddingTop: 36 }}>
@@ -104,7 +106,7 @@ export default function TermPageClient({ term, prev, next }) {
             <h1 style={{ fontFamily: F.display, fontSize: "clamp(24px, 4vw, 34px)", fontWeight: 700, letterSpacing: -0.5, marginBottom: 14, lineHeight: 1.15 }}>{term.term}</h1>
             <div style={{ padding: "14px 18px", background: C.bgCard, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.teal}`, borderRadius: 0, marginBottom: 20, display: "flex", gap: 12, alignItems: "flex-start" }}>
               <p style={{ fontFamily: F.mono, fontSize: 13, color: C.textSecondary, lineHeight: 1.7, flex: 1 }}><span style={{ color: C.teal, marginRight: 8 }}>TL;DR</span>{d.tldr}</p>
-              <ShareBtn text={d.tldr} url={baseUrl} label="share" small />
+              <ShareBtn text={d.tldr} path={basePath} label="share" small />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, letterSpacing: 1, textTransform: "uppercase" }}>prerequisites:</span>
@@ -142,7 +144,7 @@ export default function TermPageClient({ term, prev, next }) {
                 <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: i < d.keyPoints.length - 1 ? 10 : 0, paddingBottom: i < d.keyPoints.length - 1 ? 10 : 0, borderBottom: i < d.keyPoints.length - 1 ? `1px solid ${C.border}` : "none" }}>
                   <span style={{ color: C.teal, fontFamily: F.mono, fontSize: 12, marginTop: 2, flexShrink: 0 }}>{">"}</span>
                   <span style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6, flex: 1 }}>{kp}</span>
-                  <ShareBtn text={kp} url={`${baseUrl}#key-takeaways`} label="" small />
+                  <ShareBtn text={kp} path={`${basePath}#key-takeaways`} label="" small />
                 </div>
               ))}
             </div>
