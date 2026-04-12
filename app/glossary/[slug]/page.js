@@ -1,54 +1,62 @@
-import { firmReviews, getFirmBySlug, getAdjacentFirms } from "@/lib/firmReviews";
+import { glossaryTerms, getTermBySlug, getAdjacentTerms } from "@/lib/glossary";
+import { catMeta } from "@/lib/constants";
 import { notFound } from "next/navigation";
-import FirmReviewClient from "./FirmReviewClient";
+import TermPageClient from "./TermPageClient";
 
 const siteUrl = "https://tradeterminal.org";
 
 export async function generateStaticParams() {
-  return firmReviews.map(f => ({ slug: f.slug }));
+  return glossaryTerms
+    .filter(t => t.page)
+    .map(t => ({ slug: t.slug }));
 }
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const firm = getFirmBySlug(slug);
-  if (!firm) return {};
+  const term = getTermBySlug(slug);
+  if (!term) return {};
 
-  const title = `${firm.name} Review 2026 — Rules, Payouts & Honest Verdict`;
-  const description = firm.tldr;
-  const url = `${siteUrl}/prop-firms/${firm.slug}`;
+  const title = `${term.term} in Futures Trading Explained`;
+  const description = term.page?.tldr || term.tldr;
+  const url = `${siteUrl}/glossary/${term.slug}`;
+  const categoryLabel = catMeta[term.category]?.label || term.category;
 
   return {
     title,
     description,
-    keywords: [firm.name, "review", "futures prop firm", "evaluation rules", "payout", "funded trading"],
-    alternates: { canonical: url },
+    keywords: [term.term, "futures trading", "futures glossary", categoryLabel, "trading education"],
+    alternates: {
+      canonical: url,
+    },
     openGraph: {
-      title: `${firm.name} Review — Futures Prop Firm`,
+      title: `${term.term} — Futures Glossary`,
       description,
       url,
       type: "article",
       siteName: "TradeTerminal",
+      section: categoryLabel,
     },
     twitter: {
       card: "summary",
-      title: `${firm.name} Review — Futures Prop Firm`,
+      title: `${term.term} — Futures Glossary`,
       description,
     },
   };
 }
 
-export default async function FirmReviewPage({ params }) {
+export default async function TermPage({ params }) {
   const { slug } = await params;
-  const firm = getFirmBySlug(slug);
-  if (!firm) notFound();
-  const { prev, next } = getAdjacentFirms(slug);
+  const term = getTermBySlug(slug);
+  if (!term || !term.page) notFound();
+  const { prev, next } = getAdjacentTerms(slug);
 
-  const faqItems = firm.overview.map(s => ({
+  // FAQ structured data for Google rich snippets
+  const faqItems = term.page.sections.map(s => ({
     "@type": "Question",
     name: s.heading,
     acceptedAnswer: {
       "@type": "Answer",
-      text: s.body.split("\n\n")[0],
+      text: s.body.split("\n\n")[0], // First paragraph only
     },
   }));
 
@@ -64,7 +72,7 @@ export default async function FirmReviewPage({ params }) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <FirmReviewClient firm={firm} prev={prev} next={next} />
+      <TermPageClient term={term} prev={prev} next={next} />
     </>
   );
 }
