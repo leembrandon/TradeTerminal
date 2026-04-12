@@ -75,6 +75,13 @@ export default function Home() {
               <p style={{ fontSize: 12, color: "#566A8A", lineHeight: 1.6 }}>5 strategies with setup rules, worked examples, and when they work and fail. Any session.</p>
             </div>
           </Link>
+          <Link href="/playbook">
+            <div style={{ background: "#0F1A2E", border: "1px solid rgba(93,202,165,0.15)", borderRadius: 8, padding: "24px 20px", cursor: "pointer", borderTop: "2px solid #85B7EB" }}>
+              <p style={{ fontFamily: F.mono, fontSize: 11, color: "#85B7EB", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>playbook</p>
+              <p style={{ fontFamily: F.display, fontSize: 15, fontWeight: 500, marginBottom: 8 }}>Build your plan</p>
+              <p style={{ fontSize: 12, color: "#566A8A", lineHeight: 1.6 }}>Create personal trading playbooks with setups, entry/exit rules, risk management, and checklists.</p>
+            </div>
+          </Link>
           <Link href="/prop-firms">
             <div style={{ background: "#0F1A2E", border: "1px solid rgba(93,202,165,0.15)", borderRadius: 8, padding: "24px 20px", cursor: "pointer", borderTop: "2px solid #F0997B" }}>
               <p style={{ fontFamily: F.mono, fontSize: 11, color: "#F0997B", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>prop firms</p>
