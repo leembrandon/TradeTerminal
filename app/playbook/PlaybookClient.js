@@ -6,6 +6,42 @@ import { getSiteUrl } from "@/lib/utils";
 
 const STORAGE_KEY = "tt_playbooks";
 
+const MARKETS = [
+  { value: "ES", label: "ES — S&P 500" },
+  { value: "NQ", label: "NQ — Nasdaq 100" },
+  { value: "YM", label: "YM — Dow 30" },
+  { value: "RTY", label: "RTY — Russell 2000" },
+  { value: "CL", label: "CL — Crude Oil" },
+  { value: "NG", label: "NG — Natural Gas" },
+  { value: "GC", label: "GC — Gold" },
+  { value: "SI", label: "SI — Silver" },
+  { value: "ZN", label: "ZN — 10-Year Note" },
+  { value: "ZB", label: "ZB — 30-Year Bond" },
+  { value: "MES", label: "MES — Micro S&P 500" },
+  { value: "MNQ", label: "MNQ — Micro Nasdaq" },
+  { value: "MCL", label: "MCL — Micro Crude" },
+  { value: "MGC", label: "MGC — Micro Gold" },
+];
+
+const SESSIONS = [
+  { value: "New York", label: "New York Session" },
+  { value: "London", label: "London Session" },
+  { value: "Asia", label: "Asia Session" },
+  { value: "Overnight/Globex", label: "Overnight / Globex" },
+];
+
+const TIMEFRAMES = [
+  { value: "1min", label: "1 min" },
+  { value: "2min", label: "2 min" },
+  { value: "3min", label: "3 min" },
+  { value: "5min", label: "5 min" },
+  { value: "15min", label: "15 min" },
+  { value: "30min", label: "30 min" },
+  { value: "1hr", label: "1 hour" },
+  { value: "4hr", label: "4 hour" },
+  { value: "Daily", label: "Daily" },
+];
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function uid() {
@@ -95,6 +131,33 @@ function Input({ value, onChange, placeholder, style: extra }) {
       onFocus={e => e.target.style.borderColor = `${C.teal}66`}
       onBlur={e => e.target.style.borderColor = C.border}
     />
+  );
+}
+
+function Select({ value, onChange, options, placeholder }) {
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      style={{
+        width: "100%", padding: "10px 14px", background: C.bgCard, border: `1px solid ${C.border}`,
+        borderRadius: 4, color: value ? C.textPrimary : C.textMuted, fontFamily: F.body, fontSize: 14,
+        outline: "none", cursor: "pointer", transition: "border-color 0.2s",
+        WebkitAppearance: "none", MozAppearance: "none", appearance: "none",
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23566A8A' fill='none' stroke-width='1.5'/%3E%3C/svg%3E")`,
+        backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center",
+        paddingRight: 36,
+      }}
+      onFocus={e => e.target.style.borderColor = `${C.teal}66`}
+      onBlur={e => e.target.style.borderColor = C.border}
+    >
+      <option value="" style={{ color: C.textMuted, background: C.bgCard }}>{placeholder || "Select..."}</option>
+      {options.map(opt => (
+        <option key={opt.value} value={opt.value} style={{ color: C.textPrimary, background: C.bgCard }}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -332,15 +395,15 @@ function PlaybookEditor({ playbook, onSave, onBack }) {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
               <div>
                 <Label>Market / Product</Label>
-                <Input value={pb.market} onChange={v => update("market", v)} placeholder="e.g. ES, NQ, CL" />
+                <Select value={pb.market} onChange={v => update("market", v)} options={MARKETS} placeholder="Select market..." />
               </div>
               <div>
                 <Label>Session</Label>
-                <Input value={pb.session} onChange={v => update("session", v)} placeholder="e.g. RTH, Globex, London" />
+                <Select value={pb.session} onChange={v => update("session", v)} options={SESSIONS} placeholder="Select session..." />
               </div>
               <div>
                 <Label>Timeframe</Label>
-                <Input value={pb.timeframe} onChange={v => update("timeframe", v)} placeholder="e.g. 5min, 15min, 1hr" />
+                <Select value={pb.timeframe} onChange={v => update("timeframe", v)} options={TIMEFRAMES} placeholder="Select timeframe..." />
               </div>
             </div>
           </Section>
