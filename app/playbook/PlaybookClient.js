@@ -125,7 +125,7 @@ function Input({ value, onChange, placeholder, style: extra }) {
       placeholder={placeholder}
       style={{
         width: "100%", padding: "10px 14px", background: C.bgCard, border: `1px solid ${C.border}`,
-        borderRadius: 4, color: C.textPrimary, fontFamily: F.body, fontSize: 14, outline: "none",
+        borderRadius: 4, color: C.textPrimary, fontFamily: F.body, fontSize: 16, outline: "none",
         transition: "border-color 0.2s", ...extra,
       }}
       onFocus={e => e.target.style.borderColor = `${C.teal}66`}
@@ -180,7 +180,7 @@ function TextArea({ value, onChange, placeholder, rows }) {
       rows={rows || 3}
       style={{
         width: "100%", padding: "10px 14px", background: C.bgCard, border: `1px solid ${C.border}`,
-        borderRadius: 4, color: C.textPrimary, fontFamily: F.body, fontSize: 14, outline: "none",
+        borderRadius: 4, color: C.textPrimary, fontFamily: F.body, fontSize: 16, outline: "none",
         resize: "vertical", lineHeight: 1.7, transition: "border-color 0.2s",
       }}
       onFocus={e => e.target.style.borderColor = `${C.teal}66`}
@@ -210,7 +210,7 @@ function RuleList({ items, onChange, placeholder, color }) {
             placeholder={placeholder || `Rule ${i + 1}`}
             style={{
               flex: 1, padding: "10px 14px", background: C.bgCard, border: `1px solid ${C.border}`,
-              borderRadius: 4, color: C.textPrimary, fontFamily: F.body, fontSize: 14, outline: "none",
+              borderRadius: 4, color: C.textPrimary, fontFamily: F.body, fontSize: 16, outline: "none",
               transition: "border-color 0.2s",
             }}
             onFocus={e => e.target.style.borderColor = `${accent}66`}
@@ -256,7 +256,7 @@ function ChecklistEditor({ items, onChange }) {
             placeholder="e.g. Check economic calendar for high-impact news"
             style={{
               flex: 1, padding: "10px 14px", background: C.bgCard, border: `1px solid ${C.border}`,
-              borderRadius: 4, color: C.textPrimary, fontFamily: F.body, fontSize: 14, outline: "none",
+              borderRadius: 4, color: C.textPrimary, fontFamily: F.body, fontSize: 16, outline: "none",
               transition: "border-color 0.2s",
             }}
             onFocus={e => e.target.style.borderColor = `${C.amber}66`}
