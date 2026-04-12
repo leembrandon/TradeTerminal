@@ -1,12 +1,43 @@
 import "./globals.css";
 
+const siteUrl = "https://tradeterminal.vercel.app";
+
 export const metadata = {
-  title: "TradeTerminal — Futures Trading Education",
-  description: "The complete futures trading education platform. Learn the language, understand the markets, master the setups, get funded.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "TradeTerminal — Futures Trading Education",
+    template: "%s | TradeTerminal",
+  },
+  description: "The complete futures trading education platform. 54 terms explained with real examples, real numbers, and zero fluff. Learn futures from the ground up.",
+  keywords: ["futures trading", "futures education", "futures glossary", "learn futures", "prop firm", "ES futures", "NQ futures", "day trading futures"],
+  authors: [{ name: "TradeTerminal" }],
+  creator: "TradeTerminal",
   openGraph: {
-    title: "TradeTerminal — Futures Trading Education",
-    description: "The complete futures trading education platform. Learn the language, understand the markets, master the setups, get funded.",
     type: "website",
+    locale: "en_US",
+    url: siteUrl,
+    siteName: "TradeTerminal",
+    title: "TradeTerminal — Futures Trading Education",
+    description: "The complete futures trading education platform. 54 terms explained with real examples, real numbers, and zero fluff.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TradeTerminal — Futures Trading Education",
+    description: "The complete futures trading education platform. 54 terms explained with real examples, real numbers, and zero fluff.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  alternates: {
+    canonical: siteUrl,
   },
 };
 
