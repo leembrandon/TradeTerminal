@@ -68,9 +68,9 @@ function blankPlaybook() {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     // Structured sections
-    market: "",
-    session: "",
-    timeframe: "",
+    market: [],
+    session: [],
+    timeframe: [],
     // Setup
     setupName: "",
     setupDescription: "",
@@ -134,30 +134,40 @@ function Input({ value, onChange, placeholder, style: extra }) {
   );
 }
 
-function Select({ value, onChange, options, placeholder }) {
+function ChipPicker({ selected, onChange, options, color }) {
+  const accent = color || C.teal;
+  const toggle = (value) => {
+    if (selected.includes(value)) {
+      onChange(selected.filter(v => v !== value));
+    } else {
+      onChange([...selected, value]);
+    }
+  };
+
   return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      style={{
-        width: "100%", padding: "10px 14px", background: C.bgCard, border: `1px solid ${C.border}`,
-        borderRadius: 4, color: value ? C.textPrimary : C.textMuted, fontFamily: F.body, fontSize: 14,
-        outline: "none", cursor: "pointer", transition: "border-color 0.2s",
-        WebkitAppearance: "none", MozAppearance: "none", appearance: "none",
-        backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23566A8A' fill='none' stroke-width='1.5'/%3E%3C/svg%3E")`,
-        backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center",
-        paddingRight: 36,
-      }}
-      onFocus={e => e.target.style.borderColor = `${C.teal}66`}
-      onBlur={e => e.target.style.borderColor = C.border}
-    >
-      <option value="" style={{ color: C.textMuted, background: C.bgCard }}>{placeholder || "Select..."}</option>
-      {options.map(opt => (
-        <option key={opt.value} value={opt.value} style={{ color: C.textPrimary, background: C.bgCard }}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      {options.map(opt => {
+        const active = selected.includes(opt.value);
+        return (
+          <button
+            key={opt.value}
+            onClick={() => toggle(opt.value)}
+            style={{
+              padding: "6px 12px", borderRadius: 4, cursor: "pointer",
+              fontFamily: F.mono, fontSize: 11, transition: "all 0.15s",
+              background: active ? `${accent}22` : C.bgCard,
+              border: `1px solid ${active ? `${accent}66` : C.border}`,
+              color: active ? accent : C.textMuted,
+            }}
+            onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = `${accent}44`; e.currentTarget.style.color = C.textSecondary; } }}
+            onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textMuted; } }}
+          >
+            {active && <span style={{ marginRight: 4 }}>&#10003;</span>}
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -310,8 +320,12 @@ function PlaybookCard({ playbook, onOpen, onDelete }) {
         </button>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-        {playbook.market && <span style={{ padding: "3px 8px", background: C.bgSurface, borderRadius: 3, fontFamily: F.mono, fontSize: 10, color: C.textMuted }}>{playbook.market}</span>}
-        {playbook.session && <span style={{ padding: "3px 8px", background: C.bgSurface, borderRadius: 3, fontFamily: F.mono, fontSize: 10, color: C.textMuted }}>{playbook.session}</span>}
+        {(Array.isArray(playbook.market) ? playbook.market : playbook.market ? [playbook.market] : []).map(m => (
+          <span key={m} style={{ padding: "3px 8px", background: C.bgSurface, borderRadius: 3, fontFamily: F.mono, fontSize: 10, color: C.textMuted }}>{m}</span>
+        ))}
+        {(Array.isArray(playbook.session) ? playbook.session : playbook.session ? [playbook.session] : []).map(s => (
+          <span key={s} style={{ padding: "3px 8px", background: C.bgSurface, borderRadius: 3, fontFamily: F.mono, fontSize: 10, color: C.textMuted }}>{s}</span>
+        ))}
         {playbook.setupName && <span style={{ padding: "3px 8px", background: `${C.blue}15`, borderRadius: 3, fontFamily: F.mono, fontSize: 10, color: C.blue }}>{playbook.setupName}</span>}
       </div>
       <div style={{ display: "flex", gap: 16, fontFamily: F.mono, fontSize: 10, color: C.textMuted }}>
@@ -392,19 +406,17 @@ function PlaybookEditor({ playbook, onSave, onBack }) {
 
           {/* ── Overview ── */}
           <Section id="overview" icon="$" iconColor={C.teal} title="Overview">
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
-              <div>
-                <Label>Market / Product</Label>
-                <Select value={pb.market} onChange={v => update("market", v)} options={MARKETS} placeholder="Select market..." />
-              </div>
-              <div>
-                <Label>Session</Label>
-                <Select value={pb.session} onChange={v => update("session", v)} options={SESSIONS} placeholder="Select session..." />
-              </div>
-              <div>
-                <Label>Timeframe</Label>
-                <Select value={pb.timeframe} onChange={v => update("timeframe", v)} options={TIMEFRAMES} placeholder="Select timeframe..." />
-              </div>
+            <div style={{ marginBottom: 18 }}>
+              <Label>Market / Product</Label>
+              <ChipPicker selected={pb.market} onChange={v => update("market", v)} options={MARKETS} color={C.teal} />
+            </div>
+            <div style={{ marginBottom: 18 }}>
+              <Label>Session</Label>
+              <ChipPicker selected={pb.session} onChange={v => update("session", v)} options={SESSIONS} color={C.blue} />
+            </div>
+            <div>
+              <Label>Timeframe</Label>
+              <ChipPicker selected={pb.timeframe} onChange={v => update("timeframe", v)} options={TIMEFRAMES} color={C.purple} />
             </div>
           </Section>
 
@@ -561,9 +573,15 @@ function PlaybookViewer({ playbook, onEdit, onBack }) {
           {pb.name || "Untitled Playbook"}
         </h1>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {pb.market && <div style={{ padding: "6px 12px", background: C.bgSurface, borderRadius: 4, fontFamily: F.mono, fontSize: 11 }}><span style={{ color: C.textMuted }}>Market: </span><span style={{ color: C.textPrimary }}>{pb.market}</span></div>}
-          {pb.session && <div style={{ padding: "6px 12px", background: C.bgSurface, borderRadius: 4, fontFamily: F.mono, fontSize: 11 }}><span style={{ color: C.textMuted }}>Session: </span><span style={{ color: C.textPrimary }}>{pb.session}</span></div>}
-          {pb.timeframe && <div style={{ padding: "6px 12px", background: C.bgSurface, borderRadius: 4, fontFamily: F.mono, fontSize: 11 }}><span style={{ color: C.textMuted }}>Timeframe: </span><span style={{ color: C.textPrimary }}>{pb.timeframe}</span></div>}
+          {(Array.isArray(pb.market) ? pb.market : pb.market ? [pb.market] : []).map(m => (
+            <div key={m} style={{ padding: "6px 12px", background: C.bgSurface, borderRadius: 4, fontFamily: F.mono, fontSize: 11 }}><span style={{ color: C.textMuted }}>Market: </span><span style={{ color: C.textPrimary }}>{m}</span></div>
+          ))}
+          {(Array.isArray(pb.session) ? pb.session : pb.session ? [pb.session] : []).map(s => (
+            <div key={s} style={{ padding: "6px 12px", background: C.bgSurface, borderRadius: 4, fontFamily: F.mono, fontSize: 11 }}><span style={{ color: C.textMuted }}>Session: </span><span style={{ color: C.textPrimary }}>{s}</span></div>
+          ))}
+          {(Array.isArray(pb.timeframe) ? pb.timeframe : pb.timeframe ? [pb.timeframe] : []).map(t => (
+            <div key={t} style={{ padding: "6px 12px", background: C.bgSurface, borderRadius: 4, fontFamily: F.mono, fontSize: 11 }}><span style={{ color: C.textMuted }}>Timeframe: </span><span style={{ color: C.textPrimary }}>{t}</span></div>
+          ))}
         </div>
       </div>
 
