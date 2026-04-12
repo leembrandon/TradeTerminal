@@ -2,7 +2,7 @@ import { glossaryTerms } from "@/lib/glossary";
 import { catMeta } from "@/lib/constants";
 import GlossaryClient from "./GlossaryClient";
 
-const siteUrl = "https://tradesterminal.vercel.app";
+const siteUrl = "https://tradeterminal.org";
 
 export const metadata = {
   title: "Futures Trading Glossary 54 Terms Explained",
