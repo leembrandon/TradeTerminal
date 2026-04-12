@@ -1,4 +1,5 @@
 import "./globals.css";
+import AnalyticsWrapper from "./AnalyticsWrapper";
 
 const siteUrl = "https://tradesterminal.vercel.app";
 
@@ -67,6 +68,7 @@ export default function RootLayout({ children }) {
         <div style={{ position: "relative", zIndex: 1 }}>
           {children}
         </div>
+        <AnalyticsWrapper />
       </body>
     </html>
   );
