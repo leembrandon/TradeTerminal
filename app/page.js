@@ -4,7 +4,7 @@ export const metadata = {
   title: "TradeTerminal — Learn Futures Trading From the Ground Up",
   description: "The complete futures trading education platform. 54 terms explained with real examples, real numbers, and zero fluff. Free, searchable, and built for traders.",
   alternates: {
-    canonical: "https://tradesterminal.vercel.app",
+    canonical: "https://tradesterminal.org",
   },
   openGraph: {
     title: "TradeTerminal — Learn Futures Trading From the Ground Up",
