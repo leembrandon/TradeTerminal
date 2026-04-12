@@ -61,11 +61,13 @@ export default function Home() {
               <p style={{ fontSize: 12, color: "#566A8A", lineHeight: 1.6 }}>54 essential terms with deep-dive explanations, examples, and common mistakes.</p>
             </div>
           </Link>
-          <div style={{ background: "#0F1A2E", border: "1px solid rgba(93,202,165,0.15)", borderRadius: 8, padding: "24px 20px", borderTop: "2px solid #EF9F27", opacity: 0.5 }}>
-            <p style={{ fontFamily: F.mono, fontSize: 11, color: "#EF9F27", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>markets</p>
-            <p style={{ fontFamily: F.display, fontSize: 15, fontWeight: 500, marginBottom: 8 }}>Futures markets</p>
-            <p style={{ fontSize: 12, color: "#566A8A", lineHeight: 1.6 }}>Coming soon. Equity indexes, energy, metals, agriculture, currencies, and rates.</p>
-          </div>
+          <Link href="/markets">
+            <div style={{ background: "#0F1A2E", border: "1px solid rgba(93,202,165,0.15)", borderRadius: 8, padding: "24px 20px", cursor: "pointer", borderTop: "2px solid #EF9F27" }}>
+              <p style={{ fontFamily: F.mono, fontSize: 11, color: "#EF9F27", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>markets</p>
+              <p style={{ fontFamily: F.display, fontSize: 15, fontWeight: 500, marginBottom: 8 }}>Futures markets</p>
+              <p style={{ fontSize: 12, color: "#566A8A", lineHeight: 1.6 }}>6 market guides. Equity indexes, energy, metals, agriculture, currencies, and treasuries.</p>
+            </div>
+          </Link>
           <Link href="/prop-firms">
             <div style={{ background: "#0F1A2E", border: "1px solid rgba(93,202,165,0.15)", borderRadius: 8, padding: "24px 20px", cursor: "pointer", borderTop: "2px solid #F0997B" }}>
               <p style={{ fontFamily: F.mono, fontSize: 11, color: "#F0997B", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>prop firms</p>
