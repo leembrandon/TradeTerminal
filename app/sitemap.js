@@ -1,7 +1,7 @@
 import { glossaryTerms } from '@/lib/glossary';
 
 export default function sitemap() {
-  const base = 'https://tradeterminal.vercel.app'; // swap with your custom domain when you have one
+  const base = 'https://tradesterminal.vercel.app'; // swap with your custom domain when you have one
 
   const glossaryPages = glossaryTerms.map((term) => ({
     url: `${base}/glossary/${term.slug}`,
