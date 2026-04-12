@@ -254,16 +254,18 @@ export default function PropFirmsClient() {
         </h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
           {[
-            { label: "Best for beginners", firm: "TopStep", reason: "Strongest education, EOD drawdown, longest track record", color: "#3B82F6" },
-            { label: "Best profit retention", firm: "Apex", reason: "100% of first $25K. Wait for a sale.", color: "#EF9F27" },
-            { label: "Most flexible", firm: "Tradeify", reason: "Choose funded path after passing. $0 activation. One-time fee.", color: "#5DCAA5" },
-            { label: "Fastest payouts", firm: "Lucid", reason: "15-min avg payout. No funded consistency on Flex.", color: "#AFA9EC" },
+            { label: "Best for beginners", firm: "TopStep", slug: "topstep", reason: "Strongest education, EOD drawdown, longest track record", color: "#3B82F6" },
+            { label: "Best profit retention", firm: "Apex", slug: "apex", reason: "100% of first $25K. Wait for a sale.", color: "#EF9F27" },
+            { label: "Most flexible", firm: "Tradeify", slug: "tradeify", reason: "Choose funded path after passing. $0 activation. One-time fee.", color: "#5DCAA5" },
+            { label: "Fastest payouts", firm: "Lucid", slug: "lucid", reason: "15-min avg payout. No funded consistency on Flex.", color: "#AFA9EC" },
           ].map((pick, i) => (
-            <div key={i} style={{ padding: "16px 18px", background: C.bgCard, border: `1px solid ${C.border}`, borderTop: `3px solid ${pick.color}`, borderRadius: 0 }}>
+            <Link key={i} href={`/prop-firms/${pick.slug}`} style={{ textDecoration: "none" }}>
+              <div style={{ padding: "16px 18px", background: C.bgCard, border: `1px solid ${C.border}`, borderTop: `3px solid ${pick.color}`, borderRadius: 0, cursor: "pointer" }}>
               <p style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>{pick.label}</p>
               <p style={{ fontFamily: F.mono, fontSize: 15, fontWeight: 600, color: pick.color, marginBottom: 6 }}>{pick.firm}</p>
               <p style={{ fontSize: 12, color: C.textSecondary, lineHeight: 1.6 }}>{pick.reason}</p>
             </div>
+            </Link>
           ))}
         </div>
       </div>
@@ -283,7 +285,7 @@ export default function PropFirmsClient() {
                     onMouseEnter={() => setHighlightCol(f.id)}
                     onMouseLeave={() => setHighlightCol(null)}
                     style={{ textAlign: "left", padding: "12px 14px", borderLeft: `1px solid ${C.border}`, background: highlightCol === f.id ? `${f.color}11` : C.bgCard, transition: "background 0.2s" }}>
-                    <span style={{ color: f.color, fontSize: 13, fontWeight: 600 }}>{f.name}</span>
+                    <Link href={`/prop-firms/${f.id}`} style={{ textDecoration: "none" }}><span style={{ color: f.color, fontSize: 13, fontWeight: 600 }}>{f.name}</span></Link>
                     <br />
                     <span style={{ fontSize: 10, color: C.textMuted, fontWeight: 400 }}>{f.tagline.split(".")[0]}</span>
                   </th>
@@ -392,10 +394,15 @@ export default function PropFirmsClient() {
                   </div>
                 </div>
 
-                {/* Visit link */}
-                <a href={f.url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", background: `${f.color}22`, border: `1px solid ${f.color}44`, borderRadius: 4, fontFamily: F.mono, fontSize: 11, color: f.color, textDecoration: "none" }}>
-                  Visit {f.name} <span style={{ fontSize: 13 }}>{">"}</span>
-                </a>
+                {/* Links */}
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <Link href={`/prop-firms/${f.id}`} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", background: `${f.color}22`, border: `1px solid ${f.color}44`, borderRadius: 4, fontFamily: F.mono, fontSize: 11, color: f.color, textDecoration: "none" }}>
+                    Full {f.name} review <span style={{ fontSize: 13 }}>{">"}</span>
+                  </Link>
+                  <a href={f.url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", background: "transparent", border: `1px solid ${C.border}`, borderRadius: 4, fontFamily: F.mono, fontSize: 11, color: C.textMuted, textDecoration: "none" }}>
+                    Visit {f.name} site <span style={{ fontSize: 13 }}>{">"}</span>
+                  </a>
+                </div>
               </div>
             )}
           </div>
