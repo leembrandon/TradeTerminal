@@ -143,8 +143,7 @@ export default function TermPageClient({ term, prev, next }) {
               {d.keyPoints.map((kp, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: i < d.keyPoints.length - 1 ? 10 : 0, paddingBottom: i < d.keyPoints.length - 1 ? 10 : 0, borderBottom: i < d.keyPoints.length - 1 ? `1px solid ${C.border}` : "none" }}>
                   <span style={{ color: C.teal, fontFamily: F.mono, fontSize: 12, marginTop: 2, flexShrink: 0 }}>{">"}</span>
-                  <span style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6, flex: 1 }}>{kp}</span>
-                  <ShareBtn text={kp} path={`${basePath}#key-takeaways`} label="" small />
+                  <span style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6 }}>{kp}</span>
                 </div>
               ))}
             </div>
