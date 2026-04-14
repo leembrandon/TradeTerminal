@@ -3,9 +3,26 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { C, F, catColors } from "@/lib/constants";
 import { getLessonUrl, TYPE_LABELS } from "@/lib/learningPath";
+import { getSiteUrl } from "@/lib/utils";
 
 const STORAGE_KEY = "tt_learn_progress";
 const SUBSCRIBED_KEY = "tt_subscribed";
+
+// ─── Share Button ────────────────────────────────────────────────────────────
+
+function ShareBtn({ path, label }) {
+  const [toast, setToast] = useState(false);
+  const copy = () => {
+    const url = getSiteUrl() + path;
+    navigator.clipboard.writeText(url).then(() => { setToast(true); setTimeout(() => setToast(false), 2000); });
+  };
+  return (
+    <div style={{ position: "relative", display: "inline-flex" }}>
+      <button onClick={copy} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", background: "transparent", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textMuted, fontFamily: F.mono, fontSize: 10, cursor: "pointer" }}>{label || "share"}</button>
+      {toast && <span style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: 6, padding: "4px 10px", background: C.bgSurface, border: `1px solid ${C.teal}33`, borderRadius: 4, fontFamily: F.mono, fontSize: 9, color: C.teal, whiteSpace: "nowrap", zIndex: 10 }}>copied</span>}
+    </div>
+  );
+}
 
 // ─── Email Capture ───────────────────────────────────────────────────────────
 
@@ -368,12 +385,15 @@ export default function LearnClient({ learningPath }) {
     <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 20px" }}>
       {/* Breadcrumb */}
       <div style={{
-        fontFamily: F.mono, fontSize: 12, color: C.textMuted,
-        padding: "28px 0 0", display: "flex", alignItems: "center", gap: 8,
+        padding: "20px 0", borderBottom: `1px solid ${C.border}`,
+        display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12,
       }}>
-        <Link href="/" style={{ color: C.teal, textDecoration: "none" }}>TRADETERMINAL</Link>
-        <span>/</span>
-        <span>LEARN</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Link href="/"><span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 700, color: C.textPrimary }}>TradeTerminal<span style={{ color: C.teal }}>_</span></span></Link>
+          <span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>/</span>
+          <span style={{ color: C.teal, fontFamily: F.mono, fontSize: 12 }}>learn</span>
+        </div>
+        <ShareBtn path="/learn" label="share" />
       </div>
 
       {/* Header */}
@@ -495,6 +515,20 @@ export default function LearnClient({ learningPath }) {
         {/* Bottom email capture */}
         <div style={{ marginTop: 12 }}>
           <EmailCapture variant="default" />
+        </div>
+
+        {/* Share CTA */}
+        <div style={{
+          marginTop: 12, background: C.bgCard, border: `1px solid ${C.border}`,
+          borderRadius: 10, padding: "24px 20px", textAlign: "center",
+        }}>
+          <p style={{ fontFamily: F.display, fontSize: 15, fontWeight: 500, color: C.textPrimary, marginBottom: 4 }}>
+            Know someone learning futures?
+          </p>
+          <p style={{ fontFamily: F.body, fontSize: 13, color: C.textMuted, marginBottom: 14, lineHeight: 1.5 }}>
+            Send them the learning path. 7 phases, 69 lessons, zero cost.
+          </p>
+          <ShareBtn path="/learn" label="copy link" />
         </div>
       </div>
     </div>
