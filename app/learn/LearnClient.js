@@ -134,10 +134,10 @@ function LessonRow({ lesson, completed, onToggle, index }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        display: "flex", alignItems: "center", gap: 12,
-        padding: "11px 16px", background: hovered ? C.bgCardHover : "transparent",
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "10px 12px", background: hovered ? C.bgCardHover : "transparent",
         borderRadius: 6, borderLeft: `2px solid ${completed ? C.green : "transparent"}`,
-        transition: "background 0.15s",
+        transition: "background 0.15s", flexWrap: "wrap",
       }}
     >
       {/* Checkbox */}
@@ -158,10 +158,10 @@ function LessonRow({ lesson, completed, onToggle, index }) {
         )}
       </div>
 
-      {/* Clickable lesson link */}
+      {/* Clickable lesson link — takes remaining space */}
       <Link href={url} style={{
-        flex: 1, display: "flex", alignItems: "center", gap: 8,
-        textDecoration: "none", minWidth: 0,
+        flex: "1 1 0%", display: "flex", alignItems: "center", gap: 8,
+        textDecoration: "none", minWidth: 0, overflow: "hidden",
       }}>
         <span style={{
           fontFamily: F.body, fontSize: 14,
@@ -182,32 +182,12 @@ function LessonRow({ lesson, completed, onToggle, index }) {
         </svg>
       </Link>
 
-      {/* Content type badge — hover only */}
-      <span style={{
-        fontFamily: F.mono, fontSize: 9, color: C.textMuted,
-        background: `${C.textMuted}15`, padding: "2px 7px", borderRadius: 3,
-        letterSpacing: 0.8, flexShrink: 0,
-        opacity: hovered ? 1 : 0, transition: "opacity 0.15s",
-        pointerEvents: "none",
-      }}>
-        {typeLabel}
-      </span>
-
-      {/* Category pill */}
-      <span style={{
-        fontFamily: F.mono, fontSize: 10, color: catColor,
-        background: `${catColor}18`, padding: "3px 8px", borderRadius: 4,
-        textTransform: "uppercase", letterSpacing: 0.8, flexShrink: 0,
-      }}>
-        {lesson.category}
-      </span>
-
-      {/* Reading time */}
+      {/* Reading time — always visible, compact */}
       <span style={{
         fontFamily: F.mono, fontSize: 11, color: C.textMuted,
-        flexShrink: 0, minWidth: 42, textAlign: "right",
+        flexShrink: 0, whiteSpace: "nowrap",
       }}>
-        {lesson.time}min
+        {lesson.time}m
       </span>
     </div>
   );
@@ -233,61 +213,65 @@ function PhaseCard({ phase, progress, onToggleLesson, defaultExpanded }) {
       {/* Header */}
       <div onClick={() => setExpanded(!expanded)}
         style={{
-          display: "flex", alignItems: "center", gap: 16,
-          padding: "20px 24px", cursor: "pointer", userSelect: "none",
+          padding: "16px 16px 16px 20px", cursor: "pointer", userSelect: "none",
         }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: 10,
-          background: isComplete ? `${C.green}15` : `rgba(93,202,165,0.12)`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0, fontSize: 20, color: isComplete ? C.green : C.teal,
-          transition: "all 0.3s",
-        }}>
-          {isComplete ? "✓" : phase.icon}
-        </div>
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-            <span style={{
-              fontFamily: F.mono, fontSize: 11, color: C.textMuted,
-              textTransform: "uppercase", letterSpacing: 1.5,
-            }}>Phase {phase.phase}</span>
-            <span style={{
-              fontFamily: F.display, fontSize: 16, color: isComplete ? C.green : C.textPrimary,
-              fontWeight: 600,
-            }}>{phase.title}</span>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 10, marginTop: 2,
+            background: isComplete ? `${C.green}15` : `rgba(93,202,165,0.12)`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0, fontSize: 18, color: isComplete ? C.green : C.teal,
+            transition: "all 0.3s",
+          }}>
+            {isComplete ? "✓" : phase.icon}
           </div>
-          <p style={{
-            fontFamily: F.body, fontSize: 13, color: C.textMuted,
-            margin: "4px 0 0", lineHeight: 1.4,
-          }}>{phase.subtitle}</p>
-          {/* Continue hint when collapsed and in progress */}
-          {!expanded && nextLesson && completedCount > 0 && (
-            <div style={{
-              fontFamily: F.mono, fontSize: 11, color: C.teal,
-              marginTop: 6, opacity: 0.7, display: "flex", alignItems: "center", gap: 6,
-            }}>
-              <span>▸</span>
-              <span>Continue: {nextLesson.title}</span>
-            </div>
-          )}
-        </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
-          <span style={{ fontFamily: F.mono, fontSize: 11, color: C.textMuted }}>~{totalTime}min</span>
-          <span style={{
-            fontFamily: F.mono, fontSize: 12, fontWeight: 600,
-            color: isComplete ? C.green : pct > 0 ? C.teal : C.textMuted,
-          }}>{completedCount}/{totalCount}</span>
-          <svg width="16" height="16" viewBox="0 0 16 16"
-            style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.25s ease", color: C.textMuted }}>
-            <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-          </svg>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+              <span style={{
+                fontFamily: F.mono, fontSize: 11, color: C.textMuted,
+                textTransform: "uppercase", letterSpacing: 1.5,
+              }}>Phase {phase.phase}</span>
+              <span style={{
+                fontFamily: F.display, fontSize: 15, color: isComplete ? C.green : C.textPrimary,
+                fontWeight: 600,
+              }}>{phase.title}</span>
+            </div>
+            <p style={{
+              fontFamily: F.body, fontSize: 13, color: C.textMuted,
+              margin: "4px 0 0", lineHeight: 1.4,
+            }}>{phase.subtitle}</p>
+            {/* Continue hint when collapsed and in progress */}
+            {!expanded && nextLesson && completedCount > 0 && (
+              <div style={{
+                fontFamily: F.mono, fontSize: 11, color: C.teal,
+                marginTop: 6, opacity: 0.7, display: "flex", alignItems: "center", gap: 6,
+              }}>
+                <span>▸</span>
+                <span>Continue: {nextLesson.title}</span>
+              </div>
+            )}
+            {/* Stats row — below the title so it never competes for space */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 12, marginTop: 8,
+            }}>
+              <span style={{ fontFamily: F.mono, fontSize: 11, color: C.textMuted }}>~{totalTime}min</span>
+              <span style={{
+                fontFamily: F.mono, fontSize: 12, fontWeight: 600,
+                color: isComplete ? C.green : pct > 0 ? C.teal : C.textMuted,
+              }}>{completedCount}/{totalCount}</span>
+              <div style={{ flex: 1 }} />
+              <svg width="16" height="16" viewBox="0 0 16 16"
+                style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.25s ease", color: C.textMuted }}>
+                <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+              </svg>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Progress bar */}
-      <div style={{ height: 2, background: C.bgSurface, margin: "0 24px" }}>
+      <div style={{ height: 2, background: C.bgSurface, margin: "0 20px" }}>
         <div style={{
           height: 2, width: `${pct}%`, background: isComplete ? C.green : C.teal,
           borderRadius: 1, transition: "width 0.4s ease",
@@ -406,38 +390,38 @@ export default function LearnClient({ learningPath }) {
       {/* Overall Progress */}
       <div style={{
         background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 10,
-        padding: "20px 24px", marginBottom: 16,
+        padding: "16px 20px", marginBottom: 16,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
           {/* Circular progress */}
-          <div style={{ position: "relative", width: 56, height: 56, flexShrink: 0 }}>
-            <svg width="56" height="56" viewBox="0 0 56 56" style={{ transform: "rotate(-90deg)" }}>
-              <circle cx="28" cy="28" r="24" fill="none" stroke={C.bgSurface} strokeWidth="4" />
-              <circle cx="28" cy="28" r="24" fill="none"
+          <div style={{ position: "relative", width: 48, height: 48, flexShrink: 0 }}>
+            <svg width="48" height="48" viewBox="0 0 48 48" style={{ transform: "rotate(-90deg)" }}>
+              <circle cx="24" cy="24" r="20" fill="none" stroke={C.bgSurface} strokeWidth="4" />
+              <circle cx="24" cy="24" r="20" fill="none"
                 stroke={overallPct === 100 ? C.green : C.teal} strokeWidth="4" strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 24}`}
-                strokeDashoffset={`${2 * Math.PI * 24 * (1 - overallPct / 100)}`}
+                strokeDasharray={`${2 * Math.PI * 20}`}
+                strokeDashoffset={`${2 * Math.PI * 20 * (1 - overallPct / 100)}`}
                 style={{ transition: "stroke-dashoffset 0.6s ease" }}
               />
             </svg>
             <div style={{
               position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-              fontFamily: F.mono, fontSize: 14, fontWeight: 700,
+              fontFamily: F.mono, fontSize: 12, fontWeight: 700,
               color: overallPct === 100 ? C.green : C.teal,
             }}>{overallPct}%</div>
           </div>
 
-          <div style={{ flex: 1, display: "flex", gap: 32, flexWrap: "wrap" }}>
+          <div style={{ flex: 1, display: "flex", gap: 20, flexWrap: "wrap", minWidth: 0 }}>
             {[
-              { label: "LESSONS", value: `${completedLessons} / ${totalLessons}` },
-              { label: "PHASES", value: `${completedPhases} / ${learningPath.length}` },
-              { label: "EST. TIME", value: `~${totalTime} min` },
+              { label: "LESSONS", value: `${completedLessons}/${totalLessons}` },
+              { label: "PHASES", value: `${completedPhases}/${learningPath.length}` },
+              { label: "EST. TIME", value: `~${totalTime}m` },
             ].map((stat) => (
               <div key={stat.label}>
                 <div style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, letterSpacing: 1.5, marginBottom: 2 }}>
                   {stat.label}
                 </div>
-                <div style={{ fontFamily: F.mono, fontSize: 16, color: C.textPrimary, fontWeight: 600 }}>
+                <div style={{ fontFamily: F.mono, fontSize: 15, color: C.textPrimary, fontWeight: 600 }}>
                   {stat.value}
                 </div>
               </div>
