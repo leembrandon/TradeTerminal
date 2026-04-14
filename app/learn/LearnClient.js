@@ -18,7 +18,7 @@ function ShareBtn({ path, label }) {
   };
   return (
     <div style={{ position: "relative", display: "inline-flex" }}>
-      <button onClick={copy} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", background: "transparent", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textMuted, fontFamily: F.mono, fontSize: 10, cursor: "pointer" }}>{label || "share this page"}</button>
+      <button onClick={copy} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", background: "transparent", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textMuted, fontFamily: F.mono, fontSize: 10, cursor: "pointer" }}>{label || "share"}</button>
       {toast && <span style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: 6, padding: "4px 10px", background: C.bgSurface, border: `1px solid ${C.teal}33`, borderRadius: 4, fontFamily: F.mono, fontSize: 9, color: C.teal, whiteSpace: "nowrap", zIndex: 10 }}>copied</span>}
     </div>
   );
@@ -393,7 +393,7 @@ export default function LearnClient({ learningPath }) {
           <span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>/</span>
           <span style={{ color: C.teal, fontFamily: F.mono, fontSize: 12 }}>learn</span>
         </div>
-        <ShareBtn path="/learn" label="share" />
+        <ShareBtn path="/learn" label="share this page" />
       </div>
 
       {/* Header */}
