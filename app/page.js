@@ -75,6 +75,13 @@ export default function Home() {
               <p style={{ fontSize: 12, color: "#566A8A", lineHeight: 1.6 }}>5 strategies with setup rules, worked examples, and when they work and fail. Any session.</p>
             </div>
           </Link>
+          <Link href="/learn">
+            <div style={{ background: "#0F1A2E", border: "1px solid rgba(93,202,165,0.15)", borderRadius: 8, padding: "24px 20px", cursor: "pointer", borderTop: "2px solid #EF9F27" }}>
+              <p style={{ fontFamily: F.mono, fontSize: 11, color: "#EF9F27", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>learning path</p>
+              <p style={{ fontFamily: F.display, fontSize: 15, fontWeight: 500, marginBottom: 8 }}>Zero to funded</p>
+              <p style={{ fontSize: 12, color: "#566A8A", lineHeight: 1.6 }}>Structured 7-phase curriculum from futures basics to getting funded. Track your progress as you go.</p>
+            </div>
+          </Link>
           <Link href="/playbook">
             <div style={{ background: "#0F1A2E", border: "1px solid rgba(93,202,165,0.15)", borderRadius: 8, padding: "24px 20px", cursor: "pointer", borderTop: "2px solid #85B7EB" }}>
               <p style={{ fontFamily: F.mono, fontSize: 11, color: "#85B7EB", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>playbook</p>

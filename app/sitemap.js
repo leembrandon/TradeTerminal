@@ -40,6 +40,7 @@ export default function sitemap() {
     { url: `${base}/prop-firms`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.95 },
     { url: `${base}/markets`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/strategies`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.9 },
+    { url: `${base}/learn`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/playbook`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
     { url: `${base}/journal`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
     ...firmPages,
