@@ -1,5 +1,6 @@
 import "./globals.css";
 import AnalyticsWrapper from "./AnalyticsWrapper";
+import LearnBackBar from "./LearnBackBar";
 
 const siteUrl = "https://tradesterminal.vercel.app";
 
@@ -66,6 +67,7 @@ export default function RootLayout({ children }) {
           pointerEvents: "none", zIndex: 0,
         }} />
         <div style={{ position: "relative", zIndex: 1 }}>
+          <LearnBackBar />
           {children}
         </div>
         <AnalyticsWrapper />
