@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { C, F, catColors } from "@/lib/constants";
 import { getSiteUrl } from "@/lib/utils";
+import NavBar from "@/app/NavBar";
 
 function ShareBtn({ text, path, label, small }) {
   const [toast, setToast] = useState(false);
@@ -82,16 +83,7 @@ export default function TermPageClient({ term, prev, next }) {
       )}
 
       {/* Breadcrumb */}
-      <div style={{ padding: "20px 0", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/"><span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 700, color: C.textPrimary }}>TradeTerminal<span style={{ color: C.teal }}>_</span></span></Link>
-          <span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>/</span>
-          <Link href="/glossary"><span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>glossary</span></Link>
-          <span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>/</span>
-          <span style={{ color: C.teal, fontFamily: F.mono, fontSize: 12 }}>{term.term.toLowerCase()}</span>
-        </div>
-        <ShareBtn path={basePath} label="share this term" />
-      </div>
+      <NavBar breadcrumbs={[{ label: "glossary", href: "/glossary" }, { label: term.term.toLowerCase() }]} sharePath={basePath} shareLabel="share this term" />
 
       <div style={{ display: "flex", gap: 40, paddingTop: 36 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
