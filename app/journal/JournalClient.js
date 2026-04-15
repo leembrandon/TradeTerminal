@@ -94,8 +94,10 @@ function loadPlaybooks() {
 function blankTrade() {
   return {
     id: uid(), contract: "ES", direction: "long",
+    pnlMode: "prices", // "prices" or "direct"
     entry: "", exit: "", qty: "1",
-    pnl: null, pnlManual: "",
+    pnlManual: "",
+    plannedRisk: "", plannedTarget: "",
     playbookId: "", followedPlan: "",
     mistakes: [], note: "",
   };
@@ -111,14 +113,26 @@ function blankSession() {
 }
 
 function calcTradePnl(trade) {
+  // Direct P&L mode — user just typed the dollar amount
+  if (trade.pnlMode === "direct") {
+    return trade.pnlManual ? parseFloat(trade.pnlManual) : null;
+  }
+  // Prices mode — calculate from entry/exit
   const spec = CONTRACTS.find(c => c.value === trade.contract);
   if (!spec || !spec.pointValue) return trade.pnlManual ? parseFloat(trade.pnlManual) : null;
   const entry = parseFloat(trade.entry);
   const exit = parseFloat(trade.exit);
   const qty = parseInt(trade.qty) || 1;
-  if (isNaN(entry) || isNaN(exit)) return trade.pnlManual ? parseFloat(trade.pnlManual) : null;
+  if (isNaN(entry) || isNaN(exit)) return null;
   const diff = trade.direction === "long" ? exit - entry : entry - exit;
   return diff * spec.pointValue * qty;
+}
+
+function calcActualRR(trade) {
+  const pnl = calcTradePnl(trade);
+  const risk = parseFloat(trade.plannedRisk);
+  if (pnl === null || isNaN(pnl) || isNaN(risk) || risk === 0) return null;
+  return pnl / Math.abs(risk);
 }
 
 function sessionPnl(session) {
@@ -226,11 +240,15 @@ function Input({ value, onChange, placeholder, type = "text", style: s = {}, ...
 
 // ── Trade Editor Row ─────────────────────────────────────────────────────────
 
+const PRIMARY_CONTRACTS = ["ES", "MES", "NQ", "MNQ", "CL", "GC"];
+
 function TradeEditor({ trade, index, playbooks, onChange, onRemove, canRemove }) {
+  const [showAllContracts, setShowAllContracts] = useState(false);
   const update = (field, value) => onChange({ ...trade, [field]: value });
   const pnl = calcTradePnl(trade);
-  const spec = CONTRACTS.find(c => c.value === trade.contract);
-  const isManual = trade.contract === "OTHER";
+  const actualRR = calcActualRR(trade);
+  const isDirect = trade.pnlMode === "direct";
+  const visibleContracts = showAllContracts ? CONTRACTS : CONTRACTS.filter(c => PRIMARY_CONTRACTS.includes(c.value));
 
   return (
     <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 8, padding: "16px", marginBottom: 10 }}>
@@ -241,6 +259,9 @@ function TradeEditor({ trade, index, playbooks, onChange, onRemove, canRemove })
           {pnl !== null && !isNaN(pnl) && (
             <span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 600, color: pnl >= 0 ? C.green : C.coral }}>{formatPnl(pnl)}</span>
           )}
+          {actualRR !== null && (
+            <span style={{ fontFamily: F.mono, fontSize: 11, color: actualRR >= 0 ? C.green : C.coral, padding: "2px 6px", background: `${actualRR >= 0 ? C.green : C.coral}12`, borderRadius: 3 }}>{actualRR >= 0 ? "+" : ""}{actualRR.toFixed(1)}R</span>
+          )}
           {canRemove && (
             <button onClick={onRemove} style={{ background: "none", border: "none", color: C.textMuted, fontFamily: F.mono, fontSize: 11, cursor: "pointer", padding: "2px 6px" }}
               onMouseEnter={e => e.currentTarget.style.color = C.coral}
@@ -249,16 +270,40 @@ function TradeEditor({ trade, index, playbooks, onChange, onRemove, canRemove })
         </div>
       </div>
 
-      {/* Row 1: Contract, Direction, Qty */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 120px" }}>
-          <Label>Contract</Label>
-          <select value={trade.contract} onChange={e => update("contract", e.target.value)}
-            style={{ width: "100%", padding: "10px 14px", background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 4, color: C.textPrimary, fontFamily: F.mono, fontSize: 16, outline: "none", cursor: "pointer" }}>
-            {CONTRACTS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
+      {/* Contract chips */}
+      <div style={{ marginBottom: 12 }}>
+        <Label>Contract</Label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {visibleContracts.map(c => {
+            const active = trade.contract === c.value;
+            return (
+              <button key={c.value} onClick={() => update("contract", c.value)}
+                style={{ padding: "7px 14px", borderRadius: 4, cursor: "pointer", fontFamily: F.mono, fontSize: 12, fontWeight: active ? 600 : 400, transition: "all 0.15s",
+                  background: active ? `${C.teal}22` : C.bg, border: `1px solid ${active ? `${C.teal}66` : C.border}`, color: active ? C.teal : C.textMuted }}
+                onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = `${C.teal}44`; e.currentTarget.style.color = C.textSecondary; } }}
+                onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textMuted; } }}>
+                {active && <span style={{ marginRight: 4 }}>&#10003;</span>}{c.label}
+              </button>
+            );
+          })}
+          {!showAllContracts && (
+            <button onClick={() => setShowAllContracts(true)}
+              style={{ padding: "7px 12px", borderRadius: 4, cursor: "pointer", fontFamily: F.mono, fontSize: 11, background: "transparent", border: `1px dashed ${C.border}`, color: C.textMuted }}>
+              more...
+            </button>
+          )}
+          {showAllContracts && (
+            <button onClick={() => setShowAllContracts(false)}
+              style={{ padding: "7px 12px", borderRadius: 4, cursor: "pointer", fontFamily: F.mono, fontSize: 11, background: "transparent", border: `1px dashed ${C.border}`, color: C.textMuted }}>
+              less
+            </button>
+          )}
         </div>
-        <div style={{ flex: "1 1 120px" }}>
+      </div>
+
+      {/* Direction + Qty */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+        <div style={{ flex: "1 1 160px" }}>
           <Label>Direction</Label>
           <ChipSelect value={trade.direction} onChange={v => update("direction", v || "long")} options={DIRECTIONS} />
         </div>
@@ -268,51 +313,106 @@ function TradeEditor({ trade, index, playbooks, onChange, onRemove, canRemove })
         </div>
       </div>
 
-      {/* Row 2: Entry, Exit (or manual P&L for OTHER) */}
-      {isManual ? (
-        <div style={{ marginBottom: 12 }}>
-          <Label>P&L (manual)</Label>
+      {/* P&L Mode toggle */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <Label>P&L</Label>
+          <div style={{ display: "flex", gap: 2, background: C.bg, borderRadius: 4, padding: 2 }}>
+            {[{ value: "prices", label: "Entry/Exit" }, { value: "direct", label: "$ Amount" }].map(mode => (
+              <button key={mode.value} onClick={() => update("pnlMode", mode.value)}
+                style={{ padding: "4px 10px", borderRadius: 3, border: "none", cursor: "pointer", fontFamily: F.mono, fontSize: 10,
+                  background: trade.pnlMode === mode.value ? C.bgSurface : "transparent",
+                  color: trade.pnlMode === mode.value ? C.textPrimary : C.textMuted, transition: "all 0.15s" }}>
+                {mode.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {isDirect ? (
           <div style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: 200 }}>
             <span style={{ fontFamily: F.mono, fontSize: 16, color: C.textMuted }}>$</span>
-            <Input value={trade.pnlManual} onChange={v => update("pnlManual", v)} type="number" placeholder="0.00" style={{ flex: 1 }} />
+            <Input value={trade.pnlManual} onChange={v => update("pnlManual", v)} type="number" placeholder="0.00" style={{ flex: 1 }} step="any" />
           </div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-          <div style={{ flex: "1 1 140px" }}>
-            <Label>Entry price</Label>
-            <Input value={trade.entry} onChange={v => update("entry", v)} type="number" placeholder={spec ? `e.g. ${trade.contract === "ES" ? "5200.50" : "0.00"}` : "0.00"} style={{ width: "100%" }} step="any" />
-          </div>
-          <div style={{ flex: "1 1 140px" }}>
-            <Label>Exit price</Label>
-            <Input value={trade.exit} onChange={v => update("exit", v)} type="number" placeholder="0.00" style={{ width: "100%" }} step="any" />
-          </div>
-        </div>
-      )}
-
-      {/* Row 3: Playbook, Followed plan */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 200px" }}>
-          <Label>Playbook (optional)</Label>
-          <select value={trade.playbookId} onChange={e => update("playbookId", e.target.value)}
-            style={{ width: "100%", padding: "10px 14px", background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 4, color: trade.playbookId ? C.textPrimary : C.textMuted, fontFamily: F.body, fontSize: 16, outline: "none", cursor: "pointer" }}>
-            <option value="">None</option>
-            {playbooks.map(pb => <option key={pb.id} value={pb.id}>{pb.name || "Untitled"}</option>)}
-          </select>
-        </div>
-        {trade.playbookId && (
-          <div style={{ flex: "1 1 200px" }}>
-            <Label>Followed plan?</Label>
-            <ChipSelect value={trade.followedPlan} onChange={v => update("followedPlan", v)} options={FOLLOWED_PLAN} />
+        ) : (
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 140px" }}>
+              <Input value={trade.entry} onChange={v => update("entry", v)} type="number" placeholder="Entry price" style={{ width: "100%" }} step="any" />
+            </div>
+            <div style={{ flex: "1 1 140px" }}>
+              <Input value={trade.exit} onChange={v => update("exit", v)} type="number" placeholder="Exit price" style={{ width: "100%" }} step="any" />
+            </div>
           </div>
         )}
       </div>
 
-      {/* Row 4: Mistakes, Note */}
+      {/* Risk & Reward */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 140px" }}>
+          <Label color={C.coral}>Planned risk $</Label>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontFamily: F.mono, fontSize: 14, color: C.textMuted }}>$</span>
+            <Input value={trade.plannedRisk} onChange={v => update("plannedRisk", v)} type="number" placeholder="0" style={{ flex: 1 }} step="any" />
+          </div>
+        </div>
+        <div style={{ flex: "1 1 140px" }}>
+          <Label color={C.green}>Planned target $</Label>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontFamily: F.mono, fontSize: 14, color: C.textMuted }}>$</span>
+            <Input value={trade.plannedTarget} onChange={v => update("plannedTarget", v)} type="number" placeholder="0" style={{ flex: 1 }} step="any" />
+          </div>
+        </div>
+        {trade.plannedRisk && trade.plannedTarget && parseFloat(trade.plannedRisk) > 0 && (
+          <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", justifyContent: "flex-end", paddingBottom: 2 }}>
+            <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, letterSpacing: 1, marginBottom: 4 }}>PLANNED R:R</span>
+            <span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 600, color: C.amber }}>
+              1:{(parseFloat(trade.plannedTarget) / parseFloat(trade.plannedRisk)).toFixed(1)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Playbook chips (instead of dropdown) */}
+      {playbooks.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Label>Playbook (optional)</Label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {trade.playbookId && (
+              <button onClick={() => { update("playbookId", ""); update("followedPlan", ""); }}
+                style={{ padding: "6px 12px", borderRadius: 4, cursor: "pointer", fontFamily: F.mono, fontSize: 11, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted }}>
+                None
+              </button>
+            )}
+            {playbooks.map(pb => {
+              const active = trade.playbookId === pb.id;
+              return (
+                <button key={pb.id} onClick={() => update("playbookId", active ? "" : pb.id)}
+                  style={{ padding: "6px 12px", borderRadius: 4, cursor: "pointer", fontFamily: F.mono, fontSize: 11, transition: "all 0.15s",
+                    background: active ? `${C.blue}22` : C.bg, border: `1px solid ${active ? `${C.blue}66` : C.border}`, color: active ? C.blue : C.textMuted }}
+                  onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = `${C.blue}44`; e.currentTarget.style.color = C.textSecondary; } }}
+                  onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textMuted; } }}>
+                  {active && <span style={{ marginRight: 4 }}>&#10003;</span>}{pb.name || "Untitled"}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {trade.playbookId && (
+        <div style={{ marginBottom: 12 }}>
+          <Label>Followed plan?</Label>
+          <ChipSelect value={trade.followedPlan} onChange={v => update("followedPlan", v)} options={FOLLOWED_PLAN} />
+        </div>
+      )}
+
+      {/* Mistakes */}
       <div style={{ marginBottom: 8 }}>
         <Label color={C.coral}>Mistakes (optional)</Label>
         <ChipMulti selected={trade.mistakes} onChange={v => update("mistakes", v)} options={MISTAKES} color={C.coral} />
       </div>
+
+      {/* Note */}
       <div>
         <Label>Note (optional)</Label>
         <Input value={trade.note} onChange={v => update("note", v)} placeholder="Quick note about this trade" style={{ width: "100%" }} />
@@ -325,9 +425,13 @@ function TradeEditor({ trade, index, playbooks, onChange, onRemove, canRemove })
 
 function TradeView({ trade, index, playbooks }) {
   const pnl = calcTradePnl(trade);
+  const actualRR = calcActualRR(trade);
   const dirMeta = DIRECTIONS.find(d => d.value === trade.direction) || DIRECTIONS[0];
   const pb = playbooks.find(p => p.id === trade.playbookId);
   const followedMeta = FOLLOWED_PLAN.find(f => f.value === trade.followedPlan);
+  const hasRisk = trade.plannedRisk && parseFloat(trade.plannedRisk) > 0;
+  const hasTarget = trade.plannedTarget && parseFloat(trade.plannedTarget) > 0;
+  const plannedRR = hasRisk && hasTarget ? (parseFloat(trade.plannedTarget) / parseFloat(trade.plannedRisk)).toFixed(1) : null;
 
   return (
     <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderLeft: `3px solid ${dirMeta.color}`, borderRadius: 4, padding: "14px 16px", marginBottom: 8 }}>
@@ -337,16 +441,29 @@ function TradeView({ trade, index, playbooks }) {
           <span style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 600, color: C.textPrimary }}>{trade.contract}</span>
           <span style={{ padding: "2px 8px", background: `${dirMeta.color}15`, borderRadius: 3, fontFamily: F.mono, fontSize: 10, color: dirMeta.color }}>{dirMeta.label}</span>
           <span style={{ fontFamily: F.mono, fontSize: 11, color: C.textMuted }}>{trade.qty || 1}ct</span>
-          {trade.entry && trade.exit && trade.contract !== "OTHER" && (
+          {trade.pnlMode !== "direct" && trade.entry && trade.exit && (
             <span style={{ fontFamily: F.mono, fontSize: 11, color: C.textMuted }}>{trade.entry} → {trade.exit}</span>
           )}
           {pb && <span style={{ padding: "2px 8px", background: `${C.blue}15`, borderRadius: 3, fontFamily: F.mono, fontSize: 10, color: C.blue }}>{pb.name || "Untitled"}</span>}
           {followedMeta && <span style={{ padding: "2px 8px", background: `${followedMeta.color}15`, borderRadius: 3, fontFamily: F.mono, fontSize: 10, color: followedMeta.color }}>Plan: {followedMeta.label}</span>}
         </div>
-        {pnl !== null && !isNaN(pnl) && (
-          <span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 600, color: pnl >= 0 ? C.green : C.coral }}>{formatPnl(pnl)}</span>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {actualRR !== null && (
+            <span style={{ fontFamily: F.mono, fontSize: 11, color: actualRR >= 0 ? C.green : C.coral, padding: "2px 6px", background: `${actualRR >= 0 ? C.green : C.coral}12`, borderRadius: 3 }}>{actualRR >= 0 ? "+" : ""}{actualRR.toFixed(1)}R</span>
+          )}
+          {pnl !== null && !isNaN(pnl) && (
+            <span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 600, color: pnl >= 0 ? C.green : C.coral }}>{formatPnl(pnl)}</span>
+          )}
+        </div>
       </div>
+      {/* Risk/Target row */}
+      {(hasRisk || hasTarget || plannedRR) && (
+        <div style={{ display: "flex", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
+          {hasRisk && <span style={{ fontFamily: F.mono, fontSize: 10, color: C.coral }}>Risk: ${trade.plannedRisk}</span>}
+          {hasTarget && <span style={{ fontFamily: F.mono, fontSize: 10, color: C.green }}>Target: ${trade.plannedTarget}</span>}
+          {plannedRR && <span style={{ fontFamily: F.mono, fontSize: 10, color: C.amber }}>Planned 1:{plannedRR}</span>}
+        </div>
+      )}
       {trade.mistakes.length > 0 && (
         <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
           {trade.mistakes.map(m => (
@@ -579,6 +696,20 @@ function StatsPanel({ sessions, playbooks }) {
   const avgWin = winTrades.length > 0 ? winTrades.reduce((s, t) => s + calcTradePnl(t), 0) / winTrades.length : 0;
   const avgLoss = lossTrades.length > 0 ? lossTrades.reduce((s, t) => s + calcTradePnl(t), 0) / lossTrades.length : 0;
 
+  // R:R stats
+  const tradesWithRR = allTrades.filter(t => calcActualRR(t) !== null);
+  const winRRTrades = tradesWithRR.filter(t => calcTradePnl(t) > 0);
+  const avgWinRR = winRRTrades.length > 0 ? winRRTrades.reduce((s, t) => s + calcActualRR(t), 0) / winRRTrades.length : null;
+
+  // Target hit rate: trades where P&L >= plannedTarget
+  const tradesWithTarget = allTrades.filter(t => {
+    const target = parseFloat(t.plannedTarget);
+    const pnl = calcTradePnl(t);
+    return target > 0 && pnl !== null;
+  });
+  const hitTarget = tradesWithTarget.filter(t => calcTradePnl(t) >= parseFloat(t.plannedTarget)).length;
+  const targetRate = tradesWithTarget.length > 0 ? Math.round((hitTarget / tradesWithTarget.length) * 100) : null;
+
   // Session-level stats
   const sessionsWithPnl = sessions.filter(s => sessionPnl(s) !== null);
   const greenDays = sessionsWithPnl.filter(s => sessionPnl(s) > 0).length;
@@ -603,11 +734,13 @@ function StatsPanel({ sessions, playbooks }) {
     { label: "Total P&L", value: tradesWithPnl.length > 0 ? formatPnl(totalPnl) : "--", color: totalPnl > 0 ? C.green : totalPnl < 0 ? C.coral : C.textMuted },
     { label: "Avg win", value: winTrades.length > 0 ? formatPnl(avgWin) : "--", color: C.green },
     { label: "Avg loss", value: lossTrades.length > 0 ? formatPnl(avgLoss) : "--", color: C.coral },
+    { label: "Avg win R:R", value: avgWinRR !== null ? `${avgWinRR.toFixed(1)}R` : "--", color: C.amber },
+    { label: "Target hit", value: targetRate !== null ? `${targetRate}%` : "--", color: targetRate !== null && targetRate >= 50 ? C.green : C.textMuted },
     { label: "Top contract", value: topContract, color: C.teal },
   ];
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginBottom: 32 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: 32 }}>
       {stats.map(s => (
         <div key={s.label} style={{ padding: "14px 16px", background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 4 }}>
           <p style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, letterSpacing: 1, marginBottom: 6 }}>{s.label.toUpperCase()}</p>
