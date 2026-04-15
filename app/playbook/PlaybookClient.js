@@ -3,6 +3,9 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { C, F } from "@/lib/constants";
 import { getSiteUrl } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
+import { fetchPlaybooks, upsertPlaybook, deletePlaybook as deletePlaybookRemote } from "@/lib/storage";
+import AuthButton from "@/app/auth/AuthButton";
 
 const STORAGE_KEY = "tt_playbooks";
 
@@ -527,10 +530,12 @@ function PlaybookEditor({ playbook, onSave, onBack }) {
             </div>
           </div>
 
-          {/* Browser warning */}
-          <div style={{ padding: "12px 16px", background: C.bgCard, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.amber}`, fontSize: 11, color: C.textMuted, lineHeight: 1.7, marginBottom: 48 }}>
-            <span style={{ color: C.amber, fontFamily: F.mono, fontSize: 10, marginRight: 8 }}>NOTE</span>
-            Playbooks are saved to this browser only. Clearing your browser data will delete them. Account sync is coming soon.
+          {/* Storage info */}
+          <div style={{ padding: "12px 16px", background: C.bgCard, border: `1px solid ${C.border}`, borderLeft: `3px solid ${user ? C.green : C.amber}`, fontSize: 11, color: C.textMuted, lineHeight: 1.7, marginBottom: 48 }}>
+            <span style={{ color: user ? C.green : C.amber, fontFamily: F.mono, fontSize: 10, marginRight: 8 }}>{user ? "SYNCED" : "NOTE"}</span>
+            {user
+              ? "Your playbooks are synced to your account and saved securely in the cloud."
+              : "Playbooks are saved to this browser only. Sign in to sync across devices and keep your data safe."}
           </div>
         </div>
 
@@ -810,47 +815,55 @@ function DeleteModal({ name, onConfirm, onCancel }) {
 // ── Main Client ──────────────────────────────────────────────────────────────
 
 export default function PlaybookClient() {
+  const { user } = useAuth();
   const [playbooks, setPlaybooks] = useState([]);
   const [view, setView] = useState("list"); // list | edit | view
   const [activeId, setActiveId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [loaded, setLoaded] = useState(false);
 
-  // Load from localStorage on mount
+  // Load playbooks from cloud (if signed in) or localStorage (if not)
   useEffect(() => {
-    setPlaybooks(loadPlaybooks());
-    setLoaded(true);
-  }, []);
+    let cancelled = false;
+    (async () => {
+      const data = await fetchPlaybooks(user);
+      if (!cancelled) {
+        setPlaybooks(data);
+        setLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
 
   const activePlaybook = playbooks.find(p => p.id === activeId) || null;
 
-  const createNew = () => {
+  const createNew = async () => {
     const nb = blankPlaybook();
     const updated = [nb, ...playbooks];
     setPlaybooks(updated);
-    savePlaybooks(updated);
     setActiveId(nb.id);
     setView("edit");
+    await upsertPlaybook(user, nb);
   };
 
-  const savePlaybook = (pb) => {
+  const savePlaybook = async (pb) => {
     const updated = playbooks.map(p => p.id === pb.id ? pb : p);
     setPlaybooks(updated);
-    savePlaybooks(updated);
+    await upsertPlaybook(user, pb);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     const updated = playbooks.filter(p => p.id !== deleteTarget);
     setPlaybooks(updated);
-    savePlaybooks(updated);
-    setDeleteTarget(null);
+    await deletePlaybookRemote(user, deleteTarget);
     if (activeId === deleteTarget) {
       setActiveId(null);
       setView("list");
     }
+    setDeleteTarget(null);
   };
 
-  const duplicatePlaybook = (id) => {
+  const duplicatePlaybook = async (id) => {
     const source = playbooks.find(p => p.id === id);
     if (!source) return;
     const copy = {
@@ -862,7 +875,7 @@ export default function PlaybookClient() {
     };
     const updated = [copy, ...playbooks];
     setPlaybooks(updated);
-    savePlaybooks(updated);
+    await upsertPlaybook(user, copy);
   };
 
   return (
@@ -882,7 +895,10 @@ export default function PlaybookClient() {
             </>
           )}
         </div>
-        <ShareBtn label="share this page" />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <ShareBtn label="share this page" />
+          <AuthButton />
+        </div>
       </div>
 
       {/* List View */}
@@ -894,7 +910,7 @@ export default function PlaybookClient() {
               Trading Playbook
             </h1>
             <p style={{ fontSize: 15, color: C.textSecondary, lineHeight: 1.8, maxWidth: 700, marginBottom: 16 }}>
-              Build your personal trading playbooks. Define your setups, entry and exit rules, risk management parameters, and pre-market checklists. Your playbooks are saved locally in this browser.
+              Build your personal trading playbooks. Define your setups, entry and exit rules, risk management parameters, and pre-market checklists. {user ? "Your playbooks are synced to your account." : "Sign in to sync your playbooks across devices."}
             </p>
             <button onClick={createNew} style={{
               display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px",

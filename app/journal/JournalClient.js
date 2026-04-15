@@ -3,6 +3,9 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { C, F } from "@/lib/constants";
 import { getSiteUrl } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
+import { fetchSessions, fetchPlaybooks as fetchPlaybooksRemote, upsertSession, deleteSession as deleteSessionRemote } from "@/lib/storage";
+import AuthButton from "@/app/auth/AuthButton";
 
 const JOURNAL_KEY = "tt_journal_v2";
 const PLAYBOOK_KEY = "tt_playbooks";
@@ -844,6 +847,7 @@ function DeleteModal({ label, onConfirm, onCancel }) {
 // ── Main Client ──────────────────────────────────────────────────────────────
 
 export default function JournalClient() {
+  const { user } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [playbooks, setPlaybooks] = useState([]);
   const [view, setView] = useState("list");
@@ -853,11 +857,22 @@ export default function JournalClient() {
   const [filterContract, setFilterContract] = useState("");
   const [loaded, setLoaded] = useState(false);
 
+  // Load from cloud (if signed in) or localStorage (if not)
   useEffect(() => {
-    setSessions(loadSessions());
-    setPlaybooks(loadPlaybooks());
-    setLoaded(true);
-  }, []);
+    let cancelled = false;
+    (async () => {
+      const [sessData, pbData] = await Promise.all([
+        fetchSessions(user),
+        fetchPlaybooksRemote(user),
+      ]);
+      if (!cancelled) {
+        setSessions(sessData);
+        setPlaybooks(pbData);
+        setLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
 
   const activeSession = sessions.find(s => s.id === activeId) || null;
 
@@ -870,21 +885,21 @@ export default function JournalClient() {
 
   const createNew = () => { setActiveId(null); setView("new"); };
 
-  const saveSession = (session) => {
+  const saveSession = async (session) => {
     const exists = sessions.find(s => s.id === session.id);
     let updated;
     if (exists) { updated = sessions.map(s => s.id === session.id ? session : s); }
     else { updated = [session, ...sessions]; }
     setSessions(updated);
-    saveSessions(updated);
+    await upsertSession(user, session);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     const updated = sessions.filter(s => s.id !== deleteTarget);
     setSessions(updated);
-    saveSessions(updated);
-    setDeleteTarget(null);
+    await deleteSessionRemote(user, deleteTarget);
     if (activeId === deleteTarget) { setActiveId(null); setView("list"); }
+    setDeleteTarget(null);
   };
 
   const hasFilters = filterResult || filterContract;
@@ -913,7 +928,10 @@ export default function JournalClient() {
             </>
           )}
         </div>
-        <ShareBtn label="share this page" />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <ShareBtn label="share this page" />
+          <AuthButton />
+        </div>
       </div>
 
       {/* List View */}
@@ -922,7 +940,7 @@ export default function JournalClient() {
           <div style={{ padding: "48px 0 36px" }}>
             <h1 style={{ fontFamily: F.display, fontSize: "clamp(24px, 4vw, 34px)", fontWeight: 700, letterSpacing: -0.5, marginBottom: 14, lineHeight: 1.15 }}>Trading Journal</h1>
             <p style={{ fontSize: 15, color: C.textSecondary, lineHeight: 1.8, maxWidth: 700, marginBottom: 16 }}>
-              Log individual trades with entry/exit prices. P&L calculates automatically from contract specs. Daily results roll up from your trades.
+              Log individual trades with entry/exit prices. P&L calculates automatically from contract specs. {user ? "Your journal is synced to your account." : "Sign in to sync your journal across devices."}
             </p>
             <button onClick={createNew} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", background: `${C.teal}1A`, border: `1px solid ${C.teal}44`, borderRadius: 4, color: C.teal, fontFamily: F.mono, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "background 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.background = `${C.teal}33`}

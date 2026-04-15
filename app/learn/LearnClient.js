@@ -61,13 +61,10 @@ function EmailCapture({ variant = "default", phaseTitle = "" }) {
     if (!email || !email.includes("@")) return;
     setStatus("submitting");
 
-    fetch('https://api.convertkit.com/v3/forms/9328039/subscribe', {
+    fetch('/api/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        api_key: process.env.CONVERTKIT_API_KEY,
-        email: email,
-      }),
+      body: JSON.stringify({ email }),
     })
       .then((res) => {
         if (res.ok) {
