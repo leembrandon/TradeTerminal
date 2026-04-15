@@ -100,7 +100,6 @@ function blankTrade() {
     pnlManual: "",
     plannedRisk: "", plannedTarget: "",
     playbookId: "", followedPlan: "",
-    emotions: [], marketConditions: [],
     mistakes: [], note: "",
   };
 }
@@ -109,6 +108,7 @@ function blankSession() {
   return {
     id: uid(), date: todayStr(),
     trades: [blankTrade()],
+    emotions: [], marketConditions: [],
     whatWorked: "", whatDidnt: "", notes: "",
   };
 }
@@ -431,18 +431,6 @@ function TradeEditor({ trade, index, playbooks, onChange, onRemove, canRemove })
         </div>
       )}
 
-      {/* Emotions */}
-      <div style={{ marginBottom: 8 }}>
-        <Label color={C.purple}>Emotional state (optional)</Label>
-        <ChipMulti selected={trade.emotions} onChange={v => update("emotions", v)} options={EMOTIONS} color={C.purple} />
-      </div>
-
-      {/* Market conditions */}
-      <div style={{ marginBottom: 8 }}>
-        <Label color={C.blue}>Market conditions (optional)</Label>
-        <ChipMulti selected={trade.marketConditions} onChange={v => update("marketConditions", v)} options={MARKET_CONDITIONS} color={C.blue} />
-      </div>
-
       {/* Mistakes */}
       <div style={{ marginBottom: 8 }}>
         <Label color={C.coral}>Mistakes (optional)</Label>
@@ -499,20 +487,6 @@ function TradeView({ trade, index, playbooks }) {
           {hasRisk && <span style={{ fontFamily: F.mono, fontSize: 10, color: C.coral }}>Risk: ${trade.plannedRisk}</span>}
           {hasTarget && <span style={{ fontFamily: F.mono, fontSize: 10, color: C.green }}>Target: ${trade.plannedTarget}</span>}
           {plannedRR && <span style={{ fontFamily: F.mono, fontSize: 10, color: C.amber }}>Planned 1:{plannedRR}</span>}
-        </div>
-      )}
-      {trade.emotions && trade.emotions.length > 0 && (
-        <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
-          {trade.emotions.map(em => (
-            <span key={em} style={{ padding: "2px 6px", background: `${C.purple}12`, borderRadius: 3, fontFamily: F.mono, fontSize: 9, color: C.purple }}>{EMOTIONS.find(o => o.value === em)?.label || em}</span>
-          ))}
-        </div>
-      )}
-      {trade.marketConditions && trade.marketConditions.length > 0 && (
-        <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
-          {trade.marketConditions.map(mc => (
-            <span key={mc} style={{ padding: "2px 6px", background: `${C.blue}12`, borderRadius: 3, fontFamily: F.mono, fontSize: 9, color: C.blue }}>{MARKET_CONDITIONS.find(o => o.value === mc)?.label || mc}</span>
-          ))}
         </div>
       )}
       {trade.mistakes.length > 0 && (
@@ -621,6 +595,14 @@ function SessionEditor({ session, playbooks, isNew, onSave, onDelete, onBack }) 
               onFocus={e => e.target.style.borderColor = `${C.coral}66`} onBlur={e => e.target.style.borderColor = C.border} />
           </div>
           <div style={{ marginBottom: 20 }}>
+            <Label color={C.purple}>Emotional state</Label>
+            <ChipMulti selected={s.emotions} onChange={v => updateField("emotions", v)} options={EMOTIONS} color={C.purple} />
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <Label color={C.blue}>Market conditions</Label>
+            <ChipMulti selected={s.marketConditions} onChange={v => updateField("marketConditions", v)} options={MARKET_CONDITIONS} color={C.blue} />
+          </div>
+          <div style={{ marginBottom: 20 }}>
             <Label>Notes</Label>
             <textarea value={s.notes} onChange={e => updateField("notes", e.target.value)} placeholder="Anything else. Observations, context, lessons." rows={3}
               style={{ width: "100%", padding: "10px 14px", background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 4, color: C.textPrimary, fontFamily: F.body, fontSize: 16, outline: "none", resize: "vertical", lineHeight: 1.7 }}
@@ -647,7 +629,7 @@ function SessionEditor({ session, playbooks, isNew, onSave, onDelete, onBack }) 
 
 // ── Session Viewer ───────────────────────────────────────────────────────────
 
-function SessionViewer({ session, playbooks, onEdit, onBack, onQuickAdd }) {
+function SessionViewer({ session, playbooks, onEdit, onBack }) {
   const s = session;
   const pnl = sessionPnl(s);
   const result = sessionResult(s);
@@ -659,10 +641,7 @@ function SessionViewer({ session, playbooks, onEdit, onBack, onQuickAdd }) {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32, flexWrap: "wrap", gap: 12 }}>
         <button onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "transparent", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textMuted, fontFamily: F.mono, fontSize: 11, cursor: "pointer" }}>{"<"} back to journal</button>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={onQuickAdd} style={{ padding: "8px 16px", background: `${C.teal}1A`, border: `1px solid ${C.teal}44`, borderRadius: 4, color: C.teal, fontFamily: F.mono, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>+ add trade</button>
-          <button onClick={onEdit} style={{ padding: "8px 16px", background: `${C.blue}1A`, border: `1px solid ${C.blue}44`, borderRadius: 4, color: C.blue, fontFamily: F.mono, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>edit session</button>
-        </div>
+        <button onClick={onEdit} style={{ padding: "8px 20px", background: `${C.blue}1A`, border: `1px solid ${C.blue}44`, borderRadius: 4, color: C.blue, fontFamily: F.mono, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>edit session</button>
       </div>
 
       {/* Header */}
@@ -675,36 +654,9 @@ function SessionViewer({ session, playbooks, onEdit, onBack, onQuickAdd }) {
         {pnl !== null && <p style={{ fontFamily: F.mono, fontSize: 24, fontWeight: 600, color: pnl >= 0 ? C.green : C.coral }}>{formatPnl(pnl)}</p>}
       </div>
 
-      {/* Trade summary table — quick scan */}
-      {s.trades.length > 1 && (
-        <div style={{ marginBottom: 24, overflowX: "auto" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 340 }}>
-            {s.trades.map((trade, i) => {
-              const tPnl = calcTradePnl(trade);
-              const tRR = calcActualRR(trade);
-              const dirColor = trade.direction === "long" ? C.green : C.coral;
-              return (
-                <div key={trade.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "6px 12px", background: i % 2 === 0 ? C.bgCard : "transparent", borderRadius: 3 }}>
-                  <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, width: 20 }}>#{i + 1}</span>
-                  <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 600, color: C.textPrimary, width: 36 }}>{trade.contract}</span>
-                  <span style={{ fontFamily: F.mono, fontSize: 10, color: dirColor, width: 40 }}>{trade.direction === "long" ? "LONG" : "SHORT"}</span>
-                  <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, width: 28 }}>{trade.qty || 1}ct</span>
-                  <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 500, color: tPnl !== null ? (tPnl >= 0 ? C.green : C.coral) : C.textMuted, flex: 1, textAlign: "right" }}>
-                    {tPnl !== null ? formatPnl(tPnl) : "--"}
-                  </span>
-                  {tRR !== null && (
-                    <span style={{ fontFamily: F.mono, fontSize: 10, color: tRR >= 0 ? C.green : C.coral, width: 40, textAlign: "right" }}>{tRR >= 0 ? "+" : ""}{tRR.toFixed(1)}R</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Trade detail cards */}
+      {/* Trade list */}
       <div style={{ marginBottom: 32 }}>
-        <p style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, letterSpacing: 1, marginBottom: 10 }}>TRADE DETAILS</p>
+        <p style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, letterSpacing: 1, marginBottom: 10 }}>TRADES</p>
         {s.trades.map((trade, i) => <TradeView key={trade.id} trade={trade} index={i} playbooks={playbooks} />)}
       </div>
 
@@ -721,6 +673,27 @@ function SessionViewer({ session, playbooks, onEdit, onBack, onQuickAdd }) {
             <div style={{ padding: "16px 18px", background: C.bgCard, border: `1px solid ${C.border}`, borderTop: `2px solid ${C.coral}`, borderRadius: 4 }}>
               <p style={{ fontFamily: F.mono, fontSize: 10, color: C.coral, letterSpacing: 1, marginBottom: 8 }}>WHAT DIDN'T</p>
               <p style={{ fontSize: 14, color: C.textSecondary, lineHeight: 1.7 }}>{s.whatDidnt}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {(s.emotions.length > 0 || s.marketConditions.length > 0) && (
+        <div style={{ marginBottom: 32 }}>
+          {s.emotions.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ fontFamily: F.mono, fontSize: 10, color: C.purple, letterSpacing: 1, marginBottom: 8 }}>EMOTIONAL STATE</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {s.emotions.map(em => <span key={em} style={{ padding: "5px 10px", background: `${C.purple}15`, borderRadius: 4, fontFamily: F.mono, fontSize: 11, color: C.purple }}>{EMOTIONS.find(o => o.value === em)?.label || em}</span>)}
+              </div>
+            </div>
+          )}
+          {s.marketConditions.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ fontFamily: F.mono, fontSize: 10, color: C.blue, letterSpacing: 1, marginBottom: 8 }}>MARKET CONDITIONS</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {s.marketConditions.map(mc => <span key={mc} style={{ padding: "5px 10px", background: `${C.blue}15`, borderRadius: 4, fontFamily: F.mono, fontSize: 11, color: C.blue }}>{MARKET_CONDITIONS.find(o => o.value === mc)?.label || mc}</span>)}
+              </div>
             </div>
           )}
         </div>
@@ -839,15 +812,11 @@ function SessionCard({ session, playbooks, onOpen }) {
           <span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 500, color: pnl >= 0 ? C.green : C.coral }}>{formatPnl(pnl)}</span>
         )}
       </div>
-      {/* Show unique emotions across all trades */}
-      {(() => {
-        const allEmotions = [...new Set(session.trades.flatMap(t => t.emotions || []))];
-        return allEmotions.length > 0 ? (
-          <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
-            {allEmotions.map(e => <span key={e} style={{ padding: "2px 6px", background: C.bgSurface, borderRadius: 3, fontFamily: F.mono, fontSize: 9, color: C.textMuted }}>{EMOTIONS.find(o => o.value === e)?.label || e}</span>)}
-          </div>
-        ) : null;
-      })()}
+      {session.emotions.length > 0 && (
+        <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
+          {session.emotions.map(e => <span key={e} style={{ padding: "2px 6px", background: C.bgSurface, borderRadius: 3, fontFamily: F.mono, fontSize: 9, color: C.textMuted }}>{EMOTIONS.find(o => o.value === e)?.label || e}</span>)}
+        </div>
+      )}
     </div>
   );
 }
@@ -867,35 +836,6 @@ function DeleteModal({ label, onConfirm, onCancel }) {
           <button onClick={onConfirm} style={{ padding: "8px 16px", background: `${C.coral}22`, border: `1px solid ${C.coral}44`, borderRadius: 4, color: C.coral, fontFamily: F.mono, fontSize: 12, cursor: "pointer" }}>delete</button>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ── Weekly Summary Helper ────────────────────────────────────────────────────
-
-function getWeekKey(dateStr) {
-  const d = new Date(dateStr + "T12:00:00");
-  const day = d.getDay();
-  const monday = new Date(d);
-  monday.setDate(d.getDate() - ((day + 6) % 7));
-  return monday.toISOString().split("T")[0];
-}
-
-function WeeklySummary({ sessions }) {
-  const totalPnl = sessions.reduce((s, sess) => { const p = sessionPnl(sess); return p !== null ? s + p : s; }, 0);
-  const totalTrades = sessions.reduce((s, sess) => s + sess.trades.length, 0);
-  const allTrades = sessions.flatMap(s => s.trades);
-  const tradesWithPnl = allTrades.filter(t => calcTradePnl(t) !== null);
-  const wins = tradesWithPnl.filter(t => calcTradePnl(t) > 0).length;
-  const winRate = tradesWithPnl.length > 0 ? Math.round((wins / tradesWithPnl.length) * 100) : 0;
-  const weekStart = new Date(sessions[sessions.length - 1].date + "T12:00:00");
-  const weekLabel = weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", marginBottom: 8, marginTop: 16, borderTop: `1px solid ${C.border}`, flexWrap: "wrap" }}>
-      <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, letterSpacing: 1 }}>WEEK OF {weekLabel.toUpperCase()}</span>
-      <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 600, color: totalPnl >= 0 ? C.green : C.coral }}>{formatPnl(totalPnl)}</span>
-      <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted }}>{sessions.length} session{sessions.length !== 1 ? "s" : ""} · {totalTrades} trades · {winRate}% win</span>
     </div>
   );
 }
@@ -927,20 +867,7 @@ export default function JournalClient() {
     return filtered;
   }, [sessions, filterResult, filterContract]);
 
-  // Check if today's session already exists
-  const todaySession = sessions.find(s => s.date === todayStr());
-
-  const handleLogTrades = () => {
-    if (todaySession) {
-      // Open today's existing session in edit mode
-      setActiveId(todaySession.id);
-      setView("edit");
-    } else {
-      // Create new session
-      setActiveId(null);
-      setView("new");
-    }
-  };
+  const createNew = () => { setActiveId(null); setView("new"); };
 
   const saveSession = (session) => {
     const exists = sessions.find(s => s.id === session.id);
@@ -949,16 +876,6 @@ export default function JournalClient() {
     else { updated = [session, ...sessions]; }
     setSessions(updated);
     saveSessions(updated);
-  };
-
-  // Quick add: append a blank trade to a session and open edit mode
-  const quickAddTrade = (sessionId) => {
-    const session = sessions.find(s => s.id === sessionId);
-    if (!session) return;
-    const updated = { ...session, trades: [...session.trades, blankTrade()] };
-    saveSession(updated);
-    setActiveId(sessionId);
-    setView("edit");
   };
 
   const confirmDelete = () => {
@@ -975,59 +892,8 @@ export default function JournalClient() {
     { value: "red", label: "Red", color: C.coral },
     { value: "breakeven", label: "Breakeven", color: C.amber },
   ];
+  // Get all contracts used across sessions
   const usedContracts = [...new Set(sessions.flatMap(s => s.trades.map(t => t.contract)).filter(c => c !== "OTHER"))].sort();
-
-  // Group sorted sessions by week for weekly summaries
-  const sessionsWithWeeks = useMemo(() => {
-    const items = [];
-    let currentWeek = null;
-    let weekSessions = [];
-
-    sortedSessions.forEach((session, i) => {
-      const week = getWeekKey(session.date);
-      if (week !== currentWeek) {
-        if (weekSessions.length > 0) {
-          items.push({ type: "week", sessions: weekSessions, key: currentWeek });
-        }
-        currentWeek = week;
-        weekSessions = [session];
-      } else {
-        weekSessions.push(session);
-      }
-      items.push({ type: "session", session, key: session.id });
-    });
-    // Push the last week
-    if (weekSessions.length > 0) {
-      items.push({ type: "week", sessions: weekSessions, key: currentWeek });
-    }
-
-    return items;
-  }, [sortedSessions]);
-
-  // Build a flat render list: week summary then its sessions
-  const renderList = useMemo(() => {
-    const list = [];
-    let currentWeek = null;
-    const weekBuckets = {};
-
-    sortedSessions.forEach(session => {
-      const week = getWeekKey(session.date);
-      if (!weekBuckets[week]) weekBuckets[week] = [];
-      weekBuckets[week].push(session);
-    });
-
-    const seenWeeks = new Set();
-    sortedSessions.forEach(session => {
-      const week = getWeekKey(session.date);
-      if (!seenWeeks.has(week) && sortedSessions.length > 3) {
-        seenWeeks.add(week);
-        list.push({ type: "week", sessions: weekBuckets[week], key: "week-" + week });
-      }
-      list.push({ type: "session", session, key: session.id });
-    });
-
-    return list;
-  }, [sortedSessions]);
 
   return (
     <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 20px" }}>
@@ -1057,10 +923,10 @@ export default function JournalClient() {
             <p style={{ fontSize: 15, color: C.textSecondary, lineHeight: 1.8, maxWidth: 700, marginBottom: 16 }}>
               Log individual trades with entry/exit prices. P&L calculates automatically from contract specs. Daily results roll up from your trades.
             </p>
-            <button onClick={handleLogTrades} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", background: `${C.teal}1A`, border: `1px solid ${C.teal}44`, borderRadius: 4, color: C.teal, fontFamily: F.mono, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "background 0.2s" }}
+            <button onClick={createNew} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", background: `${C.teal}1A`, border: `1px solid ${C.teal}44`, borderRadius: 4, color: C.teal, fontFamily: F.mono, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "background 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.background = `${C.teal}33`}
               onMouseLeave={e => e.currentTarget.style.background = `${C.teal}1A`}>
-              {todaySession ? "+ add trades to today" : "+ log trades"}
+              + log trades
             </button>
           </div>
 
@@ -1099,7 +965,7 @@ export default function JournalClient() {
             </div>
           )}
 
-          {/* Session list with weekly summaries */}
+          {/* Session list */}
           {loaded && sessions.length === 0 && (
             <div style={{ padding: "60px 0 80px", textAlign: "center" }}>
               <p style={{ fontFamily: F.mono, fontSize: 48, color: C.textMuted, marginBottom: 16, opacity: 0.3 }}>{"[ ]"}</p>
@@ -1108,17 +974,12 @@ export default function JournalClient() {
             </div>
           )}
 
-          {renderList.length > 0 && (
+          {sortedSessions.length > 0 && (
             <div style={{ marginBottom: 48 }}>
-              {renderList.map(item => {
-                if (item.type === "week") {
-                  return <WeeklySummary key={item.key} sessions={item.sessions} />;
-                }
-                return (
-                  <SessionCard key={item.key} session={item.session} playbooks={playbooks}
-                    onOpen={() => { setActiveId(item.session.id); setView("view"); }} />
-                );
-              })}
+              {sortedSessions.map(session => (
+                <SessionCard key={session.id} session={session} playbooks={playbooks}
+                  onOpen={() => { setActiveId(session.id); setView("view"); }} />
+              ))}
             </div>
           )}
 
@@ -1172,8 +1033,7 @@ export default function JournalClient() {
         <div style={{ paddingTop: 36 }}>
           <SessionViewer session={activeSession} playbooks={playbooks}
             onEdit={() => setView("edit")}
-            onBack={() => { setView("list"); setActiveId(null); }}
-            onQuickAdd={() => quickAddTrade(activeSession.id)} />
+            onBack={() => { setView("list"); setActiveId(null); }} />
           <footer style={{ borderTop: `1px solid ${C.border}`, padding: "28px 0 48px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
             <div>
               <Link href="/"><span style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 500 }}>TradeTerminal<span style={{ color: C.teal }}>_</span></span></Link>
