@@ -5,7 +5,7 @@ import { C, F } from "@/lib/constants";
 import { getSiteUrl } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { fetchPlaybooks, upsertPlaybook, deletePlaybook as deletePlaybookRemote } from "@/lib/storage";
-import AuthButton from "@/app/auth/AuthButton";
+import NavBar from "@/app/NavBar";
 
 const STORAGE_KEY = "tt_playbooks";
 
@@ -881,25 +881,14 @@ export default function PlaybookClient() {
   return (
     <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 20px" }}>
       {/* Nav */}
-      <div style={{ padding: "20px 0", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/"><span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 700, color: C.textPrimary }}>TradeTerminal<span style={{ color: C.teal }}>_</span></span></Link>
-          <span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>/</span>
-          {view === "list" ? (
-            <span style={{ color: C.teal, fontFamily: F.mono, fontSize: 12 }}>playbook</span>
-          ) : (
-            <>
-              <button onClick={() => { setView("list"); setActiveId(null); }} style={{ background: "none", border: "none", color: C.textMuted, fontFamily: F.mono, fontSize: 12, cursor: "pointer", padding: 0 }}>playbook</button>
-              <span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>/</span>
-              <span style={{ color: C.teal, fontFamily: F.mono, fontSize: 12 }}>{view === "edit" ? "edit" : "view"}</span>
-            </>
-          )}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <ShareBtn label="share this page" />
-          <AuthButton />
-        </div>
-      </div>
+      <NavBar
+        breadcrumbs={view === "list"
+          ? [{ label: "playbook" }]
+          : [{ label: "playbook", onClick: () => { setView("list"); setActiveId(null); } }, { label: view === "edit" ? "edit" : "view" }]
+        }
+        sharePath="/playbook"
+        shareLabel="share this page"
+      />
 
       {/* List View */}
       {view === "list" && (
