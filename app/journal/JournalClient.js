@@ -94,7 +94,8 @@ function loadPlaybooks() {
 function blankTrade() {
   return {
     id: uid(), contract: "ES", direction: "long",
-    pnlMode: "prices", // "prices" or "direct"
+    pnlMode: "direct", // "direct" or "prices"
+    pnlResult: "win", // "win" or "loss" — only used in direct mode
     entry: "", exit: "", qty: "1",
     pnlManual: "",
     plannedRisk: "", plannedTarget: "",
@@ -113,13 +114,16 @@ function blankSession() {
 }
 
 function calcTradePnl(trade) {
-  // Direct P&L mode — user just typed the dollar amount
+  // Direct P&L mode — user typed a positive number and selected win/loss
   if (trade.pnlMode === "direct") {
-    return trade.pnlManual ? parseFloat(trade.pnlManual) : null;
+    if (!trade.pnlManual) return null;
+    const amount = Math.abs(parseFloat(trade.pnlManual));
+    if (isNaN(amount)) return null;
+    return trade.pnlResult === "loss" ? -amount : amount;
   }
   // Prices mode — calculate from entry/exit
   const spec = CONTRACTS.find(c => c.value === trade.contract);
-  if (!spec || !spec.pointValue) return trade.pnlManual ? parseFloat(trade.pnlManual) : null;
+  if (!spec || !spec.pointValue) return null;
   const entry = parseFloat(trade.entry);
   const exit = parseFloat(trade.exit);
   const qty = parseInt(trade.qty) || 1;
@@ -318,7 +322,7 @@ function TradeEditor({ trade, index, playbooks, onChange, onRemove, canRemove })
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
           <Label>P&L</Label>
           <div style={{ display: "flex", gap: 2, background: C.bg, borderRadius: 4, padding: 2 }}>
-            {[{ value: "prices", label: "Entry/Exit" }, { value: "direct", label: "$ Amount" }].map(mode => (
+            {[{ value: "direct", label: "$ Amount" }, { value: "prices", label: "Entry/Exit" }].map(mode => (
               <button key={mode.value} onClick={() => update("pnlMode", mode.value)}
                 style={{ padding: "4px 10px", borderRadius: 3, border: "none", cursor: "pointer", fontFamily: F.mono, fontSize: 10,
                   background: trade.pnlMode === mode.value ? C.bgSurface : "transparent",
@@ -330,9 +334,30 @@ function TradeEditor({ trade, index, playbooks, onChange, onRemove, canRemove })
         </div>
 
         {isDirect ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: 200 }}>
-            <span style={{ fontFamily: F.mono, fontSize: 16, color: C.textMuted }}>$</span>
-            <Input value={trade.pnlManual} onChange={v => update("pnlManual", v)} type="number" placeholder="0.00" style={{ flex: 1 }} step="any" />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            {/* Win / Loss chips */}
+            <div style={{ display: "flex", gap: 4 }}>
+              {[{ value: "win", label: "Win", color: C.green }, { value: "loss", label: "Loss", color: C.coral }].map(opt => {
+                const active = trade.pnlResult === opt.value;
+                return (
+                  <button key={opt.value} onClick={() => update("pnlResult", opt.value)}
+                    style={{ padding: "7px 16px", borderRadius: 4, cursor: "pointer", fontFamily: F.mono, fontSize: 12, fontWeight: active ? 600 : 400, transition: "all 0.15s",
+                      background: active ? `${opt.color}22` : C.bg, border: `1px solid ${active ? `${opt.color}66` : C.border}`, color: active ? opt.color : C.textMuted }}>
+                    {active && <span style={{ marginRight: 4 }}>&#10003;</span>}{opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            {/* Dollar amount — always positive */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "0 1 180px" }}>
+              <span style={{ fontFamily: F.mono, fontSize: 16, color: trade.pnlResult === "loss" ? C.coral : C.green }}>$</span>
+              <Input value={trade.pnlManual} onChange={v => update("pnlManual", v.replace(/^-/, ""))} type="number" placeholder="0.00" style={{ flex: 1 }} step="any" min="0" />
+            </div>
+            {trade.pnlManual && (
+              <span style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 600, color: trade.pnlResult === "loss" ? C.coral : C.green }}>
+                {trade.pnlResult === "loss" ? "-" : "+"}${parseFloat(trade.pnlManual || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            )}
           </div>
         ) : (
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
