@@ -111,7 +111,12 @@ export default function Home() {
           <span style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 500 }}>TradeTerminal<span style={{ color: "#5DCAA5" }}>_</span></span>
           <p style={{ fontFamily: F.mono, fontSize: 10, color: "#566A8A", marginTop: 3 }}>futures education for everyone</p>
         </div>
-        <p style={{ fontFamily: F.mono, fontSize: 10, color: "#566A8A" }}>not financial advice · educational content only</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <p style={{ fontFamily: F.mono, fontSize: 10, color: "#566A8A" }}>not financial advice · educational content only</p>
+          <span style={{ color: "#566A8A", fontSize: 10 }}>·</span>
+          <Link href="/privacy" style={{ fontFamily: F.mono, fontSize: 10, color: "#566A8A" }}>privacy</Link>
+          <Link href="/terms" style={{ fontFamily: F.mono, fontSize: 10, color: "#566A8A" }}>terms</Link>
+        </div>
       </footer>
     </div>
   );
