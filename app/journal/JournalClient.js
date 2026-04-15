@@ -81,24 +81,11 @@ const MISTAKES = [
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
-function loadSessions() {
-  if (typeof window === "undefined") return [];
-  try { const raw = localStorage.getItem(JOURNAL_KEY); return raw ? JSON.parse(raw) : []; } catch { return []; }
-}
-function saveSessions(sessions) {
-  if (typeof window === "undefined") return;
-  try { localStorage.setItem(JOURNAL_KEY, JSON.stringify(sessions)); } catch {}
-}
-function loadPlaybooks() {
-  if (typeof window === "undefined") return [];
-  try { const raw = localStorage.getItem(PLAYBOOK_KEY); return raw ? JSON.parse(raw) : []; } catch { return []; }
-}
-
 function blankTrade() {
   return {
     id: uid(), contract: "ES", direction: "long",
-    pnlMode: "direct", // "direct" or "prices"
-    pnlResult: "win", // "win" or "loss" — only used in direct mode
+    pnlMode: "direct",
+    pnlResult: "win",
     entry: "", exit: "", qty: "1",
     pnlManual: "",
     plannedRisk: "", plannedTarget: "",
@@ -108,23 +95,21 @@ function blankTrade() {
   };
 }
 
-function blankSession() {
+function blankSession(date) {
   return {
-    id: uid(), date: todayStr(),
+    id: uid(), date: date || todayStr(),
     trades: [blankTrade()],
     whatWorked: "", whatDidnt: "", notes: "",
   };
 }
 
 function calcTradePnl(trade) {
-  // Direct P&L mode — user typed a positive number and selected win/loss
   if (trade.pnlMode === "direct") {
     if (!trade.pnlManual) return null;
     const amount = Math.abs(parseFloat(trade.pnlManual));
     if (isNaN(amount)) return null;
     return trade.pnlResult === "loss" ? -amount : amount;
   }
-  // Prices mode — calculate from entry/exit
   const spec = CONTRACTS.find(c => c.value === trade.contract);
   if (!spec || !spec.pointValue) return null;
   const entry = parseFloat(trade.entry);
@@ -179,18 +164,27 @@ function formatPnl(pnl) {
   return `${prefix}$${pnl.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-// ── Reusable Components ──────────────────────────────────────────────────────
+// ── Calendar Helpers ────────────────────────────────────────────────────────
 
-function ShareBtn({ label }) {
-  const [toast, setToast] = useState(false);
-  const copy = () => { navigator.clipboard.writeText(getSiteUrl() + "/journal").then(() => { setToast(true); setTimeout(() => setToast(false), 2000); }); };
-  return (
-    <div style={{ position: "relative", display: "inline-flex" }}>
-      <button onClick={copy} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", background: "transparent", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textMuted, fontFamily: F.mono, fontSize: 10, cursor: "pointer" }}>{label || "share"}</button>
-      {toast && <span style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: 6, padding: "4px 10px", background: C.bgSurface, border: `1px solid ${C.teal}33`, borderRadius: 4, fontFamily: F.mono, fontSize: 9, color: C.teal, whiteSpace: "nowrap", zIndex: 10 }}>copied</span>}
-    </div>
-  );
+function getCalendarDays(year, month) {
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const startOffset = (firstDay + 6) % 7; // Monday-start
+  const days = [];
+  for (let i = 0; i < startOffset; i++) days.push(null);
+  for (let d = 1; d <= daysInMonth; d++) days.push(d);
+  return days;
 }
+
+function monthLabel(year, month) {
+  return new Date(year, month, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+function padDateStr(year, month, day) {
+  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+// ── Reusable Components ──────────────────────────────────────────────────────
 
 function Label({ children, color }) {
   return <label style={{ display: "block", fontFamily: F.mono, fontSize: 11, color: color || C.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>{children}</label>;
@@ -245,6 +239,73 @@ function Input({ value, onChange, placeholder, type = "text", style: s = {}, ...
   );
 }
 
+// ── Mini Calendar ───────────────────────────────────────────────────────────
+
+function MiniCalendar({ year, month, sessions, today, onDayClick, onPrev, onNext }) {
+  const days = getCalendarDays(year, month);
+  const sessionMap = {};
+  sessions.forEach(s => { sessionMap[s.date] = sessionResult(s); });
+  const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  const dotColor = (result) => {
+    if (result === "green") return C.green;
+    if (result === "red") return C.coral;
+    if (result === "breakeven") return C.amber;
+    return C.textMuted;
+  };
+
+  return (
+    <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 8, padding: "16px 16px 12px", marginBottom: 24 }}>
+      {/* Month header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <button onClick={onPrev} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textMuted, fontFamily: F.mono, fontSize: 13, cursor: "pointer", padding: "4px 10px", transition: "color 0.15s" }}
+          onMouseEnter={e => e.currentTarget.style.color = C.teal}
+          onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>{"<"}</button>
+        <span style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 500, color: C.textPrimary }}>{monthLabel(year, month)}</span>
+        <button onClick={onNext} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textMuted, fontFamily: F.mono, fontSize: 13, cursor: "pointer", padding: "4px 10px", transition: "color 0.15s" }}
+          onMouseEnter={e => e.currentTarget.style.color = C.teal}
+          onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>{">"}</button>
+      </div>
+      {/* Day-of-week headers */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4 }}>
+        {DOW.map(d => (
+          <div key={d} style={{ textAlign: "center", fontFamily: F.mono, fontSize: 9, color: C.textMuted, letterSpacing: 0.5, padding: "2px 0" }}>{d}</div>
+        ))}
+      </div>
+      {/* Days grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
+        {days.map((day, i) => {
+          if (day === null) return <div key={`empty-${i}`} />;
+          const ds = padDateStr(year, month, day);
+          const result = sessionMap[ds];
+          const isToday = ds === today;
+          const hasEntry = !!result;
+          const isFuture = ds > today;
+
+          return (
+            <button key={ds} onClick={() => !isFuture && onDayClick(ds, hasEntry)}
+              style={{
+                aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                background: isToday ? `${C.teal}12` : "transparent",
+                border: isToday ? `1px solid ${C.teal}44` : hasEntry ? `1px solid ${C.border}` : "1px solid transparent",
+                borderRadius: 6, cursor: isFuture ? "default" : "pointer",
+                opacity: isFuture ? 0.3 : 1,
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => { if (!isFuture && !isToday) e.currentTarget.style.borderColor = `${C.teal}33`; }}
+              onMouseLeave={e => { if (!isFuture && !isToday) e.currentTarget.style.borderColor = hasEntry ? C.border : "transparent"; }}>
+              <span style={{ fontFamily: F.mono, fontSize: 11, color: isToday ? C.teal : hasEntry ? C.textPrimary : C.textMuted }}>{day}</span>
+              {hasEntry && (
+                <div style={{ width: 5, height: 5, borderRadius: "50%", background: dotColor(result), marginTop: 2 }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Trade Editor Row ─────────────────────────────────────────────────────────
 
 const PRIMARY_CONTRACTS = ["ES", "MES", "NQ", "MNQ", "CL", "GC"];
@@ -272,7 +333,7 @@ function TradeEditor({ trade, index, playbooks, onChange, onRemove, canRemove })
           {canRemove && (
             <button onClick={onRemove} style={{ background: "none", border: "none", color: C.textMuted, fontFamily: F.mono, fontSize: 11, cursor: "pointer", padding: "2px 6px" }}
               onMouseEnter={e => e.currentTarget.style.color = C.coral}
-              onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>✕</button>
+              onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>&#10005;</button>
           )}
         </div>
       </div>
@@ -338,7 +399,6 @@ function TradeEditor({ trade, index, playbooks, onChange, onRemove, canRemove })
 
         {isDirect ? (
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            {/* Win / Loss chips */}
             <div style={{ display: "flex", gap: 4 }}>
               {[{ value: "win", label: "Win", color: C.green }, { value: "loss", label: "Loss", color: C.coral }].map(opt => {
                 const active = trade.pnlResult === opt.value;
@@ -351,7 +411,6 @@ function TradeEditor({ trade, index, playbooks, onChange, onRemove, canRemove })
                 );
               })}
             </div>
-            {/* Dollar amount — always positive */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "0 1 180px" }}>
               <span style={{ fontFamily: F.mono, fontSize: 16, color: trade.pnlResult === "loss" ? C.coral : C.green }}>$</span>
               <Input value={trade.pnlManual} onChange={v => update("pnlManual", v.replace(/^-/, ""))} type="number" placeholder="0.00" style={{ flex: 1 }} step="any" min="0" />
@@ -400,7 +459,7 @@ function TradeEditor({ trade, index, playbooks, onChange, onRemove, canRemove })
         )}
       </div>
 
-      {/* Playbook chips (instead of dropdown) */}
+      {/* Playbook chips */}
       {playbooks.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <Label>Playbook (optional)</Label>
@@ -496,7 +555,6 @@ function TradeView({ trade, index, playbooks }) {
           )}
         </div>
       </div>
-      {/* Risk/Target row */}
       {(hasRisk || hasTarget || plannedRR) && (
         <div style={{ display: "flex", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
           {hasRisk && <span style={{ fontFamily: F.mono, fontSize: 10, color: C.coral }}>Risk: ${trade.plannedRisk}</span>}
@@ -518,7 +576,7 @@ function TradeView({ trade, index, playbooks }) {
           ))}
         </div>
       )}
-      {trade.mistakes.length > 0 && (
+      {trade.mistakes && trade.mistakes.length > 0 && (
         <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
           {trade.mistakes.map(m => (
             <span key={m} style={{ padding: "2px 6px", background: `${C.coral}12`, borderRadius: 3, fontFamily: F.mono, fontSize: 9, color: C.coral }}>{MISTAKES.find(o => o.value === m)?.label || m}</span>
@@ -532,12 +590,19 @@ function TradeView({ trade, index, playbooks }) {
 
 // ── Session Editor ───────────────────────────────────────────────────────────
 
-function SessionEditor({ session, playbooks, isNew, onSave, onDelete, onBack }) {
+function SessionEditor({ session, playbooks, isNew, onSave, onDelete, onBack, sessions }) {
   const [s, setS] = useState(session);
   const [expanded, setExpanded] = useState(!isNew);
   const [saved, setSaved] = useState(false);
+  const [dateConflict, setDateConflict] = useState(false);
 
-  const updateField = (field, value) => setS(prev => ({ ...prev, [field]: value }));
+  const updateField = (field, value) => {
+    if (field === "date") {
+      const existing = sessions?.find(sess => sess.date === value && sess.id !== s.id);
+      setDateConflict(!!existing);
+    }
+    setS(prev => ({ ...prev, [field]: value }));
+  };
   const updateTrade = (index, trade) => { const trades = [...s.trades]; trades[index] = trade; setS(prev => ({ ...prev, trades })); };
   const addTrade = () => setS(prev => ({ ...prev, trades: [...prev.trades, blankTrade()] }));
   const removeTrade = (index) => setS(prev => ({ ...prev, trades: prev.trades.filter((_, i) => i !== index) }));
@@ -548,7 +613,12 @@ function SessionEditor({ session, playbooks, isNew, onSave, onDelete, onBack }) 
   const wins = s.trades.filter(t => { const p = calcTradePnl(t); return p !== null && p > 0; }).length;
   const losses = s.trades.filter(t => { const p = calcTradePnl(t); return p !== null && p < 0; }).length;
 
-  const handleSave = () => { onSave(s); setSaved(true); setTimeout(() => setSaved(false), 2000); };
+  const handleSave = () => {
+    if (dateConflict) return;
+    onSave(s);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
 
   return (
     <div>
@@ -558,9 +628,10 @@ function SessionEditor({ session, playbooks, isNew, onSave, onDelete, onBack }) 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {!isNew && <button onClick={onDelete} style={{ padding: "8px 16px", background: "transparent", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textMuted, fontFamily: F.mono, fontSize: 11, cursor: "pointer" }} onMouseEnter={e => e.currentTarget.style.color = C.coral} onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>delete</button>}
           {saved && <span style={{ fontFamily: F.mono, fontSize: 11, color: C.green }}>saved</span>}
-          <button onClick={handleSave} style={{ padding: "8px 20px", background: `${C.teal}1A`, border: `1px solid ${C.teal}44`, borderRadius: 4, color: C.teal, fontFamily: F.mono, fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "background 0.2s" }}
-            onMouseEnter={el => el.currentTarget.style.background = `${C.teal}33`}
-            onMouseLeave={el => el.currentTarget.style.background = `${C.teal}1A`}>{isNew ? "log session" : "save changes"}</button>
+          <button onClick={handleSave} disabled={dateConflict}
+            style={{ padding: "8px 20px", background: dateConflict ? `${C.textMuted}1A` : `${C.teal}1A`, border: `1px solid ${dateConflict ? C.textMuted : C.teal}44`, borderRadius: 4, color: dateConflict ? C.textMuted : C.teal, fontFamily: F.mono, fontSize: 12, fontWeight: 500, cursor: dateConflict ? "not-allowed" : "pointer", transition: "background 0.2s", opacity: dateConflict ? 0.5 : 1 }}
+            onMouseEnter={el => { if (!dateConflict) el.currentTarget.style.background = `${C.teal}33`; }}
+            onMouseLeave={el => { if (!dateConflict) el.currentTarget.style.background = `${C.teal}1A`; }}>{isNew ? "log session" : "save changes"}</button>
         </div>
       </div>
 
@@ -581,9 +652,14 @@ function SessionEditor({ session, playbooks, isNew, onSave, onDelete, onBack }) 
       <div style={{ marginBottom: 24 }}>
         <Label>Date</Label>
         <input type="date" value={s.date} onChange={e => updateField("date", e.target.value)}
-          style={{ padding: "10px 14px", background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 4, color: C.textPrimary, fontFamily: F.mono, fontSize: 16, outline: "none", colorScheme: "dark" }}
-          onFocus={e => e.target.style.borderColor = `${C.teal}66`}
-          onBlur={e => e.target.style.borderColor = C.border} />
+          style={{ padding: "10px 14px", background: C.bgCard, border: `1px solid ${dateConflict ? C.coral : C.border}`, borderRadius: 4, color: C.textPrimary, fontFamily: F.mono, fontSize: 16, outline: "none", colorScheme: "dark" }}
+          onFocus={e => e.target.style.borderColor = dateConflict ? C.coral : `${C.teal}66`}
+          onBlur={e => e.target.style.borderColor = dateConflict ? C.coral : C.border} />
+        {dateConflict && (
+          <p style={{ fontFamily: F.mono, fontSize: 11, color: C.coral, marginTop: 6 }}>
+            A session already exists for this date. Go back and edit that session instead.
+          </p>
+        )}
       </div>
 
       {/* Trades */}
@@ -635,14 +711,10 @@ function SessionEditor({ session, playbooks, isNew, onSave, onDelete, onBack }) 
       {/* Bottom save */}
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, padding: "20px 0", borderTop: `1px solid ${C.border}`, marginBottom: 28 }}>
         {saved && <span style={{ fontFamily: F.mono, fontSize: 11, color: C.green }}>saved</span>}
-        <button onClick={handleSave} style={{ padding: "8px 20px", background: `${C.teal}1A`, border: `1px solid ${C.teal}44`, borderRadius: 4, color: C.teal, fontFamily: F.mono, fontSize: 12, fontWeight: 500, cursor: "pointer" }}
-          onMouseEnter={el => el.currentTarget.style.background = `${C.teal}33`}
-          onMouseLeave={el => el.currentTarget.style.background = `${C.teal}1A`}>{isNew ? "log session" : "save changes"}</button>
-      </div>
-
-      <div style={{ padding: "12px 16px", background: C.bgCard, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.amber}`, fontSize: 11, color: C.textMuted, lineHeight: 1.7, marginBottom: 48 }}>
-        <span style={{ color: C.amber, fontFamily: F.mono, fontSize: 10, marginRight: 8 }}>NOTE</span>
-        Journal entries are saved to this browser only. Clearing your browser data will delete them. Account sync is coming soon.
+        <button onClick={handleSave} disabled={dateConflict}
+          style={{ padding: "8px 20px", background: dateConflict ? `${C.textMuted}1A` : `${C.teal}1A`, border: `1px solid ${dateConflict ? C.textMuted : C.teal}44`, borderRadius: 4, color: dateConflict ? C.textMuted : C.teal, fontFamily: F.mono, fontSize: 12, fontWeight: 500, cursor: dateConflict ? "not-allowed" : "pointer", opacity: dateConflict ? 0.5 : 1 }}
+          onMouseEnter={el => { if (!dateConflict) el.currentTarget.style.background = `${C.teal}33`; }}
+          onMouseLeave={el => { if (!dateConflict) el.currentTarget.style.background = `${C.teal}1A`; }}>{isNew ? "log session" : "save changes"}</button>
       </div>
     </div>
   );
@@ -721,12 +793,10 @@ function StatsPanel({ sessions, playbooks }) {
   const avgWin = winTrades.length > 0 ? winTrades.reduce((s, t) => s + calcTradePnl(t), 0) / winTrades.length : 0;
   const avgLoss = lossTrades.length > 0 ? lossTrades.reduce((s, t) => s + calcTradePnl(t), 0) / lossTrades.length : 0;
 
-  // R:R stats
   const tradesWithRR = allTrades.filter(t => calcActualRR(t) !== null);
   const winRRTrades = tradesWithRR.filter(t => calcTradePnl(t) > 0);
   const avgWinRR = winRRTrades.length > 0 ? winRRTrades.reduce((s, t) => s + calcActualRR(t), 0) / winRRTrades.length : null;
 
-  // Target hit rate: trades where P&L >= plannedTarget
   const tradesWithTarget = allTrades.filter(t => {
     const target = parseFloat(t.plannedTarget);
     const pnl = calcTradePnl(t);
@@ -735,18 +805,15 @@ function StatsPanel({ sessions, playbooks }) {
   const hitTarget = tradesWithTarget.filter(t => calcTradePnl(t) >= parseFloat(t.plannedTarget)).length;
   const targetRate = tradesWithTarget.length > 0 ? Math.round((hitTarget / tradesWithTarget.length) * 100) : null;
 
-  // Session-level stats
   const sessionsWithPnl = sessions.filter(s => sessionPnl(s) !== null);
   const greenDays = sessionsWithPnl.filter(s => sessionPnl(s) > 0).length;
   const dayWinRate = sessionsWithPnl.length > 0 ? Math.round((greenDays / sessionsWithPnl.length) * 100) : 0;
 
-  // Most used playbook (trade-level)
   const pbCounts = {};
   allTrades.forEach(t => { if (t.playbookId) pbCounts[t.playbookId] = (pbCounts[t.playbookId] || 0) + 1; });
   const topPbId = Object.entries(pbCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
   const topPb = playbooks.find(p => p.id === topPbId);
 
-  // Most traded contract
   const contractCounts = {};
   allTrades.forEach(t => { contractCounts[t.contract] = (contractCounts[t.contract] || 0) + 1; });
   const topContract = Object.entries(contractCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "--";
@@ -765,7 +832,7 @@ function StatsPanel({ sessions, playbooks }) {
   ];
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: 32 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: 24 }}>
       {stats.map(s => (
         <div key={s.label} style={{ padding: "14px 16px", background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 4 }}>
           <p style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, letterSpacing: 1, marginBottom: 6 }}>{s.label.toUpperCase()}</p>
@@ -782,37 +849,65 @@ function StatsPanel({ sessions, playbooks }) {
   );
 }
 
-// ── Session Card (list view) ─────────────────────────────────────────────────
+// ── Day Card (list view) ────────────────────────────────────────────────────
 
-function SessionCard({ session, playbooks, onOpen }) {
+function DayCard({ session, playbooks, onOpen }) {
   const pnl = sessionPnl(session);
   const result = sessionResult(session);
   const meta = RESULT_META[result];
   const wins = session.trades.filter(t => { const p = calcTradePnl(t); return p !== null && p > 0; }).length;
   const losses = session.trades.filter(t => { const p = calcTradePnl(t); return p !== null && p < 0; }).length;
-
-  // Unique contracts traded
   const contracts = [...new Set(session.trades.map(t => t.contract).filter(c => c !== "OTHER"))];
 
   return (
     <div onClick={onOpen}
-      style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderLeft: `3px solid ${meta.color}`, padding: "16px 20px", cursor: "pointer", transition: "border-color 0.2s", marginBottom: 8 }}
+      style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderLeft: `3px solid ${meta.color}`, borderRadius: 6, padding: "16px 20px", cursor: "pointer", transition: "border-color 0.2s", marginBottom: 10 }}
       onMouseEnter={e => e.currentTarget.style.borderColor = `${meta.color}44`}
       onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+      {/* Day header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span style={{ fontFamily: F.mono, fontSize: 13, color: C.textPrimary, fontWeight: 500 }}>{formatDate(session.date)}</span>
+          <span style={{ fontFamily: F.mono, fontSize: 14, color: C.textPrimary, fontWeight: 500 }}>{formatDate(session.date)}</span>
           <span style={{ padding: "3px 8px", background: `${meta.color}15`, borderRadius: 3, fontFamily: F.mono, fontSize: 10, color: meta.color }}>{meta.label}</span>
-          <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted }}>{session.trades.length} trade{session.trades.length !== 1 ? "s" : ""} · {wins}W {losses}L</span>
-          {contracts.length > 0 && (
-            <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted }}>{contracts.join(", ")}</span>
-          )}
         </div>
         {pnl !== null && (
-          <span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 500, color: pnl >= 0 ? C.green : C.coral }}>{formatPnl(pnl)}</span>
+          <span style={{ fontFamily: F.mono, fontSize: 16, fontWeight: 600, color: pnl >= 0 ? C.green : C.coral }}>{formatPnl(pnl)}</span>
         )}
       </div>
-      {/* Show unique emotions across all trades */}
+
+      {/* Trade count + contracts */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+        <span style={{ fontFamily: F.mono, fontSize: 11, color: C.textMuted }}>{session.trades.length} trade{session.trades.length !== 1 ? "s" : ""} · {wins}W {losses}L</span>
+        {contracts.length > 0 && (
+          <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted }}>{contracts.join(", ")}</span>
+        )}
+      </div>
+
+      {/* Inline trade previews */}
+      <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 8 }}>
+        {session.trades.slice(0, 5).map((trade, i) => {
+          const tPnl = calcTradePnl(trade);
+          const dirMeta = DIRECTIONS.find(d => d.value === trade.direction) || DIRECTIONS[0];
+          return (
+            <div key={trade.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontFamily: F.mono, fontSize: 11, color: C.textMuted, width: 18 }}>#{i + 1}</span>
+                <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 500, color: C.textPrimary }}>{trade.contract}</span>
+                <span style={{ fontFamily: F.mono, fontSize: 9, padding: "1px 5px", background: `${dirMeta.color}12`, borderRadius: 3, color: dirMeta.color }}>{dirMeta.label}</span>
+                <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted }}>{trade.qty || 1}ct</span>
+              </div>
+              {tPnl !== null && !isNaN(tPnl) && (
+                <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 500, color: tPnl >= 0 ? C.green : C.coral }}>{formatPnl(tPnl)}</span>
+              )}
+            </div>
+          );
+        })}
+        {session.trades.length > 5 && (
+          <p style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, marginTop: 4 }}>+{session.trades.length - 5} more trade{session.trades.length - 5 !== 1 ? "s" : ""}</p>
+        )}
+      </div>
+
+      {/* Emotions preview */}
       {(() => {
         const allEmotions = [...new Set(session.trades.flatMap(t => t.emotions || []))];
         return allEmotions.length > 0 ? (
@@ -857,7 +952,16 @@ export default function JournalClient() {
   const [filterContract, setFilterContract] = useState("");
   const [loaded, setLoaded] = useState(false);
 
-  // Load from cloud (if signed in) or localStorage (if not)
+  // Calendar state
+  const now = new Date();
+  const [calYear, setCalYear] = useState(now.getFullYear());
+  const [calMonth, setCalMonth] = useState(now.getMonth());
+
+  // Pending date for new sessions created from calendar click
+  const [pendingDate, setPendingDate] = useState(null);
+
+  const today = todayStr();
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -883,7 +987,42 @@ export default function JournalClient() {
     return filtered;
   }, [sessions, filterResult, filterContract]);
 
-  const createNew = () => { setActiveId(null); setView("new"); };
+  // Smart "log today's trades" — opens existing session or creates new
+  const logToday = () => {
+    const existing = sessions.find(s => s.date === today);
+    if (existing) {
+      setActiveId(existing.id);
+      setView("edit");
+    } else {
+      setPendingDate(today);
+      setActiveId(null);
+      setView("new");
+    }
+  };
+
+  // Calendar day click
+  const handleDayClick = (dateString, hasEntry) => {
+    if (hasEntry) {
+      const existing = sessions.find(s => s.date === dateString);
+      if (existing) {
+        setActiveId(existing.id);
+        setView("view");
+      }
+    } else {
+      setPendingDate(dateString);
+      setActiveId(null);
+      setView("new");
+    }
+  };
+
+  const prevMonth = () => {
+    if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1); }
+    else setCalMonth(calMonth - 1);
+  };
+  const nextMonth = () => {
+    if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); }
+    else setCalMonth(calMonth + 1);
+  };
 
   const saveSession = async (session) => {
     const exists = sessions.find(s => s.id === session.id);
@@ -908,7 +1047,6 @@ export default function JournalClient() {
     { value: "red", label: "Red", color: C.coral },
     { value: "breakeven", label: "Breakeven", color: C.amber },
   ];
-  // Get all contracts used across sessions
   const usedContracts = [...new Set(sessions.flatMap(s => s.trades.map(t => t.contract)).filter(c => c !== "OTHER"))].sort();
 
   return (
@@ -926,17 +1064,25 @@ export default function JournalClient() {
       {/* List View */}
       {view === "list" && (
         <div>
-          <div style={{ padding: "48px 0 36px" }}>
+          <div style={{ padding: "48px 0 24px" }}>
             <h1 style={{ fontFamily: F.display, fontSize: "clamp(24px, 4vw, 34px)", fontWeight: 700, letterSpacing: -0.5, marginBottom: 14, lineHeight: 1.15 }}>Trading Journal</h1>
-            <p style={{ fontSize: 15, color: C.textSecondary, lineHeight: 1.8, maxWidth: 700, marginBottom: 16 }}>
+            <p style={{ fontSize: 15, color: C.textSecondary, lineHeight: 1.8, maxWidth: 700, marginBottom: 20 }}>
               Log individual trades with entry/exit prices. P&L calculates automatically from contract specs. {user ? "Your journal is synced to your account." : "Sign in to sync your journal across devices."}
             </p>
-            <button onClick={createNew} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", background: `${C.teal}1A`, border: `1px solid ${C.teal}44`, borderRadius: 4, color: C.teal, fontFamily: F.mono, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "background 0.2s" }}
+            <button onClick={logToday} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", background: `${C.teal}1A`, border: `1px solid ${C.teal}44`, borderRadius: 4, color: C.teal, fontFamily: F.mono, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "background 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.background = `${C.teal}33`}
               onMouseLeave={e => e.currentTarget.style.background = `${C.teal}1A`}>
-              + log trades
+              + log today's trades
             </button>
           </div>
+
+          {/* Mini Calendar */}
+          <MiniCalendar
+            year={calYear} month={calMonth}
+            sessions={sessions} today={today}
+            onDayClick={handleDayClick}
+            onPrev={prevMonth} onNext={nextMonth}
+          />
 
           {sessions.length > 0 && <StatsPanel sessions={sessions} playbooks={playbooks} />}
 
@@ -973,7 +1119,12 @@ export default function JournalClient() {
             </div>
           )}
 
-          {/* Session list */}
+          {/* Recent days label */}
+          {sortedSessions.length > 0 && (
+            <p style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, letterSpacing: 1, marginBottom: 12 }}>RECENT DAYS</p>
+          )}
+
+          {/* Empty state */}
           {loaded && sessions.length === 0 && (
             <div style={{ padding: "60px 0 80px", textAlign: "center" }}>
               <p style={{ fontFamily: F.mono, fontSize: 48, color: C.textMuted, marginBottom: 16, opacity: 0.3 }}>{"[ ]"}</p>
@@ -982,10 +1133,11 @@ export default function JournalClient() {
             </div>
           )}
 
+          {/* Day cards */}
           {sortedSessions.length > 0 && (
             <div style={{ marginBottom: 48 }}>
               {sortedSessions.map(session => (
-                <SessionCard key={session.id} session={session} playbooks={playbooks}
+                <DayCard key={session.id} session={session} playbooks={playbooks}
                   onOpen={() => { setActiveId(session.id); setView("view"); }} />
               ))}
             </div>
@@ -1020,16 +1172,16 @@ export default function JournalClient() {
       {/* New Session */}
       {view === "new" && (
         <div style={{ paddingTop: 36 }}>
-          <SessionEditor session={blankSession()} playbooks={playbooks} isNew={true}
-            onSave={(s) => { saveSession(s); setActiveId(s.id); setView("view"); }}
-            onDelete={() => {}} onBack={() => setView("list")} />
+          <SessionEditor session={blankSession(pendingDate || todayStr())} playbooks={playbooks} isNew={true} sessions={sessions}
+            onSave={(s) => { saveSession(s); setActiveId(s.id); setView("view"); setPendingDate(null); }}
+            onDelete={() => {}} onBack={() => { setView("list"); setPendingDate(null); }} />
         </div>
       )}
 
       {/* Edit Session */}
       {view === "edit" && activeSession && (
         <div style={{ paddingTop: 36 }}>
-          <SessionEditor session={activeSession} playbooks={playbooks} isNew={false}
+          <SessionEditor session={activeSession} playbooks={playbooks} isNew={false} sessions={sessions}
             onSave={(s) => { saveSession(s); setView("view"); }}
             onDelete={() => setDeleteTarget(activeSession.id)}
             onBack={() => setView("view")} />
