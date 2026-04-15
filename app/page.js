@@ -1,4 +1,5 @@
 import Link from "next/link";
+import LandingAuth from "./LandingAuth";
 
 export const metadata = {
   title: "TradeTerminal — Learn Futures Trading From the Ground Up",
@@ -29,9 +30,12 @@ export default function Home() {
   return (
     <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 20px" }}>
       <header style={{ padding: "48px 0 28px", borderBottom: "1px solid rgba(93,202,165,0.15)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-          <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#5DCAA5", boxShadow: "0 0 8px rgba(93,202,165,0.4)" }} />
-          <span style={{ fontFamily: F.mono, fontSize: 10, color: "#566A8A", letterSpacing: 2, textTransform: "uppercase" }}>system online</span>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#5DCAA5", boxShadow: "0 0 8px rgba(93,202,165,0.4)" }} />
+            <span style={{ fontFamily: F.mono, fontSize: 10, color: "#566A8A", letterSpacing: 2, textTransform: "uppercase" }}>system online</span>
+          </div>
+          <LandingAuth />
         </div>
         <h1 style={{ fontFamily: F.display, fontSize: "clamp(26px, 5vw, 42px)", fontWeight: 700, letterSpacing: -1, marginBottom: 8, lineHeight: 1.1 }}>
           TradeTerminal<span style={{ color: "#5DCAA5" }}>_</span>
