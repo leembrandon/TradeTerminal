@@ -1,9 +1,12 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { C, F, catColors } from "@/lib/constants";
 import { getLessonUrl, TYPE_LABELS } from "@/lib/learningPath";
 import { getSiteUrl } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
+import { fetchLearnProgress, saveLearnProgress, resetLearnProgress as resetLearnRemote } from "@/lib/storage";
+import AuthButton from "@/app/auth/AuthButton";
 
 const STORAGE_KEY = "tt_learn_progress";
 const SUBSCRIBED_KEY = "tt_subscribed";
@@ -323,25 +326,35 @@ function PhaseCard({ phase, progress, onToggleLesson, defaultExpanded }) {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function LearnClient({ learningPath }) {
+  const { user } = useAuth();
   const [progress, setProgress] = useState({});
   const [loaded, setLoaded] = useState(false);
 
-  // Load progress from localStorage
+  // Load progress from cloud (signed in) or localStorage (signed out)
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setProgress(JSON.parse(saved));
-    } catch {}
-    setLoaded(true);
+    let cancelled = false;
+    (async () => {
+      const data = await fetchLearnProgress(user);
+      if (!cancelled) {
+        setProgress(data);
+        setLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Save progress whenever it changes (after initial load)
+  const saveTimeout = useCallback(() => {
+    // Debounced save handled inline below
   }, []);
 
-  // Save progress to localStorage
   useEffect(() => {
     if (!loaded) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-    } catch {}
-  }, [progress, loaded]);
+    const timer = setTimeout(() => {
+      saveLearnProgress(user, progress);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [progress, loaded, user]);
 
   const totalLessons = useMemo(
     () => learningPath.reduce((s, p) => s + p.lessons.length, 0),
@@ -370,9 +383,10 @@ export default function LearnClient({ learningPath }) {
     setProgress((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const resetProgress = () => {
+  const resetProgress = async () => {
     if (window.confirm("Reset all progress? This cannot be undone.")) {
       setProgress({});
+      await resetLearnRemote(user);
     }
   };
 
@@ -390,7 +404,10 @@ export default function LearnClient({ learningPath }) {
           <span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>/</span>
           <span style={{ color: C.teal, fontFamily: F.mono, fontSize: 12 }}>learn</span>
         </div>
-        <ShareBtn path="/learn" label="share this page" />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <ShareBtn path="/learn" label="share this page" />
+          <AuthButton />
+        </div>
       </div>
 
       {/* Header */}

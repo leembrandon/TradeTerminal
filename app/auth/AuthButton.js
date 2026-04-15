@@ -24,7 +24,7 @@ export default function AuthButton() {
     if (!user) { setMigrateBanner(null); return; }
     const local = hasLocalData();
     if (local.hasData) {
-      setMigrateBanner({ playbooks: local.playbooks, sessions: local.sessions });
+      setMigrateBanner({ playbooks: local.playbooks, sessions: local.sessions, learnLessons: local.learnLessons });
     }
   }, [user]);
 
@@ -74,8 +74,10 @@ export default function AuthButton() {
           {!migrated ? (
             <>
               <span style={{ fontFamily: F.mono, fontSize: 11, color: C.textSecondary }}>
-                Found {migrateBanner.playbooks} playbook{migrateBanner.playbooks !== 1 ? "s" : ""} and{" "}
-                {migrateBanner.sessions} journal session{migrateBanner.sessions !== 1 ? "s" : ""} in this browser.
+                Found {migrateBanner.playbooks} playbook{migrateBanner.playbooks !== 1 ? "s" : ""},{" "}
+                {migrateBanner.sessions} journal session{migrateBanner.sessions !== 1 ? "s" : ""}
+                {migrateBanner.learnLessons > 0 && <>, and {migrateBanner.learnLessons} completed lesson{migrateBanner.learnLessons !== 1 ? "s" : ""}</>}
+                {" "}in this browser.
               </span>
               <button
                 onClick={handleMigrate}
