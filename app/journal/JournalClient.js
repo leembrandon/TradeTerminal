@@ -100,6 +100,7 @@ function blankTrade() {
     pnlManual: "",
     plannedRisk: "", plannedTarget: "",
     playbookId: "", followedPlan: "",
+    emotions: [], marketConditions: [],
     mistakes: [], note: "",
   };
 }
@@ -108,7 +109,6 @@ function blankSession() {
   return {
     id: uid(), date: todayStr(),
     trades: [blankTrade()],
-    emotions: [], marketConditions: [],
     whatWorked: "", whatDidnt: "", notes: "",
   };
 }
@@ -431,6 +431,18 @@ function TradeEditor({ trade, index, playbooks, onChange, onRemove, canRemove })
         </div>
       )}
 
+      {/* Emotions */}
+      <div style={{ marginBottom: 8 }}>
+        <Label color={C.purple}>Emotional state (optional)</Label>
+        <ChipMulti selected={trade.emotions} onChange={v => update("emotions", v)} options={EMOTIONS} color={C.purple} />
+      </div>
+
+      {/* Market conditions */}
+      <div style={{ marginBottom: 8 }}>
+        <Label color={C.blue}>Market conditions (optional)</Label>
+        <ChipMulti selected={trade.marketConditions} onChange={v => update("marketConditions", v)} options={MARKET_CONDITIONS} color={C.blue} />
+      </div>
+
       {/* Mistakes */}
       <div style={{ marginBottom: 8 }}>
         <Label color={C.coral}>Mistakes (optional)</Label>
@@ -487,6 +499,20 @@ function TradeView({ trade, index, playbooks }) {
           {hasRisk && <span style={{ fontFamily: F.mono, fontSize: 10, color: C.coral }}>Risk: ${trade.plannedRisk}</span>}
           {hasTarget && <span style={{ fontFamily: F.mono, fontSize: 10, color: C.green }}>Target: ${trade.plannedTarget}</span>}
           {plannedRR && <span style={{ fontFamily: F.mono, fontSize: 10, color: C.amber }}>Planned 1:{plannedRR}</span>}
+        </div>
+      )}
+      {trade.emotions && trade.emotions.length > 0 && (
+        <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
+          {trade.emotions.map(em => (
+            <span key={em} style={{ padding: "2px 6px", background: `${C.purple}12`, borderRadius: 3, fontFamily: F.mono, fontSize: 9, color: C.purple }}>{EMOTIONS.find(o => o.value === em)?.label || em}</span>
+          ))}
+        </div>
+      )}
+      {trade.marketConditions && trade.marketConditions.length > 0 && (
+        <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
+          {trade.marketConditions.map(mc => (
+            <span key={mc} style={{ padding: "2px 6px", background: `${C.blue}12`, borderRadius: 3, fontFamily: F.mono, fontSize: 9, color: C.blue }}>{MARKET_CONDITIONS.find(o => o.value === mc)?.label || mc}</span>
+          ))}
         </div>
       )}
       {trade.mistakes.length > 0 && (
@@ -595,14 +621,6 @@ function SessionEditor({ session, playbooks, isNew, onSave, onDelete, onBack }) 
               onFocus={e => e.target.style.borderColor = `${C.coral}66`} onBlur={e => e.target.style.borderColor = C.border} />
           </div>
           <div style={{ marginBottom: 20 }}>
-            <Label color={C.purple}>Emotional state</Label>
-            <ChipMulti selected={s.emotions} onChange={v => updateField("emotions", v)} options={EMOTIONS} color={C.purple} />
-          </div>
-          <div style={{ marginBottom: 20 }}>
-            <Label color={C.blue}>Market conditions</Label>
-            <ChipMulti selected={s.marketConditions} onChange={v => updateField("marketConditions", v)} options={MARKET_CONDITIONS} color={C.blue} />
-          </div>
-          <div style={{ marginBottom: 20 }}>
             <Label>Notes</Label>
             <textarea value={s.notes} onChange={e => updateField("notes", e.target.value)} placeholder="Anything else. Observations, context, lessons." rows={3}
               style={{ width: "100%", padding: "10px 14px", background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 4, color: C.textPrimary, fontFamily: F.body, fontSize: 16, outline: "none", resize: "vertical", lineHeight: 1.7 }}
@@ -673,27 +691,6 @@ function SessionViewer({ session, playbooks, onEdit, onBack }) {
             <div style={{ padding: "16px 18px", background: C.bgCard, border: `1px solid ${C.border}`, borderTop: `2px solid ${C.coral}`, borderRadius: 4 }}>
               <p style={{ fontFamily: F.mono, fontSize: 10, color: C.coral, letterSpacing: 1, marginBottom: 8 }}>WHAT DIDN'T</p>
               <p style={{ fontSize: 14, color: C.textSecondary, lineHeight: 1.7 }}>{s.whatDidnt}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {(s.emotions.length > 0 || s.marketConditions.length > 0) && (
-        <div style={{ marginBottom: 32 }}>
-          {s.emotions.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ fontFamily: F.mono, fontSize: 10, color: C.purple, letterSpacing: 1, marginBottom: 8 }}>EMOTIONAL STATE</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {s.emotions.map(em => <span key={em} style={{ padding: "5px 10px", background: `${C.purple}15`, borderRadius: 4, fontFamily: F.mono, fontSize: 11, color: C.purple }}>{EMOTIONS.find(o => o.value === em)?.label || em}</span>)}
-              </div>
-            </div>
-          )}
-          {s.marketConditions.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ fontFamily: F.mono, fontSize: 10, color: C.blue, letterSpacing: 1, marginBottom: 8 }}>MARKET CONDITIONS</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {s.marketConditions.map(mc => <span key={mc} style={{ padding: "5px 10px", background: `${C.blue}15`, borderRadius: 4, fontFamily: F.mono, fontSize: 11, color: C.blue }}>{MARKET_CONDITIONS.find(o => o.value === mc)?.label || mc}</span>)}
-              </div>
             </div>
           )}
         </div>
@@ -812,11 +809,15 @@ function SessionCard({ session, playbooks, onOpen }) {
           <span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 500, color: pnl >= 0 ? C.green : C.coral }}>{formatPnl(pnl)}</span>
         )}
       </div>
-      {session.emotions.length > 0 && (
-        <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
-          {session.emotions.map(e => <span key={e} style={{ padding: "2px 6px", background: C.bgSurface, borderRadius: 3, fontFamily: F.mono, fontSize: 9, color: C.textMuted }}>{EMOTIONS.find(o => o.value === e)?.label || e}</span>)}
-        </div>
-      )}
+      {/* Show unique emotions across all trades */}
+      {(() => {
+        const allEmotions = [...new Set(session.trades.flatMap(t => t.emotions || []))];
+        return allEmotions.length > 0 ? (
+          <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
+            {allEmotions.map(e => <span key={e} style={{ padding: "2px 6px", background: C.bgSurface, borderRadius: 3, fontFamily: F.mono, fontSize: 9, color: C.textMuted }}>{EMOTIONS.find(o => o.value === e)?.label || e}</span>)}
+          </div>
+        ) : null;
+      })()}
     </div>
   );
 }
