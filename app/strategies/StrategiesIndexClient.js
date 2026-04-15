@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { C, F } from "@/lib/constants";
 import { getSiteUrl } from "@/lib/utils";
+import NavBar from "@/app/NavBar";
 
 function ShareBtn({ label }) {
   const [toast, setToast] = useState(false);
@@ -21,14 +22,7 @@ export default function StrategiesIndexClient({ strategies }) {
   return (
     <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 20px" }}>
       {/* Nav */}
-      <div style={{ padding: "20px 0", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/"><span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 700, color: C.textPrimary }}>TradeTerminal<span style={{ color: C.teal }}>_</span></span></Link>
-          <span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>/</span>
-          <span style={{ color: C.teal, fontFamily: F.mono, fontSize: 12 }}>strategies</span>
-        </div>
-        <ShareBtn label="share this page" />
-      </div>
+      <NavBar section="strategies" sharePath="/strategies" shareLabel="share this page" />
 
       {/* Hero */}
       <div style={{ padding: "48px 0 36px" }}>
