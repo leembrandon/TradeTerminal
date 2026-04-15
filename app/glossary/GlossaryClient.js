@@ -3,6 +3,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { C, F } from "@/lib/constants";
 import { getSiteUrl } from "@/lib/utils";
+import NavBar from "@/app/NavBar";
 
 function ShareButton({ path, label }) {
   const [toast, setToast] = useState(false);
@@ -53,14 +54,7 @@ export default function GlossaryClient({ terms, catMeta }) {
 
   return (
     <div style={{ maxWidth: 1060, margin: "0 auto", padding: "0 20px" }}>
-      <div style={{ padding: "20px 0", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Link href="/"><span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 700, color: C.textPrimary }}>TradeTerminal<span style={{ color: C.teal }}>_</span></span></Link>
-          <span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>/</span>
-          <span style={{ color: C.teal, fontFamily: F.mono, fontSize: 12 }}>glossary</span>
-        </div>
-        <ShareButton path="/glossary" label="share glossary" />
-      </div>
+      <NavBar section="glossary" sharePath="/glossary" shareLabel="share glossary" />
 
       <div style={{ padding: "36px 0 24px" }}>
         <h1 style={{ fontFamily: F.display, fontSize: "clamp(22px, 4vw, 32px)", fontWeight: 700, letterSpacing: -0.5, marginBottom: 8, lineHeight: 1.15 }}>
