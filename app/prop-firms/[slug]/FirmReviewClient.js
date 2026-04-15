@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { C, F } from "@/lib/constants";
 import { getSiteUrl } from "@/lib/utils";
+import NavBar from "@/app/NavBar";
 
 function ShareBtn({ path, label }) {
   const [toast, setToast] = useState(false);
@@ -63,16 +64,7 @@ export default function FirmReviewClient({ firm, prev, next }) {
   return (
     <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 20px" }}>
       {/* Nav */}
-      <div style={{ padding: "20px 0", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/"><span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 700, color: C.textPrimary }}>TradeTerminal<span style={{ color: C.teal }}>_</span></span></Link>
-          <span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>/</span>
-          <Link href="/prop-firms"><span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>prop-firms</span></Link>
-          <span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>/</span>
-          <span style={{ color: C.teal, fontFamily: F.mono, fontSize: 12 }}>{firm.slug}</span>
-        </div>
-        <ShareBtn path={basePath} label="share this review" />
-      </div>
+      <NavBar breadcrumbs={[{ label: "prop-firms", href: "/prop-firms" }, { label: firm.slug }]} sharePath={basePath} shareLabel="share this review" />
 
       <div style={{ display: "flex", gap: 40, paddingTop: 36 }}>
         {/* Main content */}
