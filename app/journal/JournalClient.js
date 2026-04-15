@@ -1000,14 +1000,12 @@ export default function JournalClient() {
     }
   };
 
-  // Calendar day click
-  const handleDayClick = (dateString, hasEntry) => {
-    if (hasEntry) {
-      const existing = sessions.find(s => s.date === dateString);
-      if (existing) {
-        setActiveId(existing.id);
-        setView("view");
-      }
+  // Calendar day click — always check sessions array directly
+  const handleDayClick = (dateString) => {
+    const existing = sessions.find(s => s.date === dateString);
+    if (existing) {
+      setActiveId(existing.id);
+      setView("view");
     } else {
       setPendingDate(dateString);
       setActiveId(null);
