@@ -6,7 +6,7 @@ import { getLessonUrl, TYPE_LABELS } from "@/lib/learningPath";
 import { getSiteUrl } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { fetchLearnProgress, saveLearnProgress, resetLearnProgress as resetLearnRemote } from "@/lib/storage";
-import AuthButton from "@/app/auth/AuthButton";
+import NavBar from "@/app/NavBar";
 
 const STORAGE_KEY = "tt_learn_progress";
 const SUBSCRIBED_KEY = "tt_subscribed";
@@ -395,20 +395,7 @@ export default function LearnClient({ learningPath }) {
   return (
     <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 20px" }}>
       {/* Breadcrumb */}
-      <div style={{
-        padding: "20px 0", borderBottom: `1px solid ${C.border}`,
-        display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/"><span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 700, color: C.textPrimary }}>TradeTerminal<span style={{ color: C.teal }}>_</span></span></Link>
-          <span style={{ color: C.textMuted, fontFamily: F.mono, fontSize: 12 }}>/</span>
-          <span style={{ color: C.teal, fontFamily: F.mono, fontSize: 12 }}>learn</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <ShareBtn path="/learn" label="share this page" />
-          <AuthButton />
-        </div>
-      </div>
+      <NavBar section="learn" sharePath="/learn" shareLabel="share this page" />
 
       {/* Header */}
       <div style={{ padding: "28px 0 32px" }}>
