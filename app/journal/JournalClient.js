@@ -169,11 +169,22 @@ function formatPnl(pnl) {
 function getCalendarDays(year, month) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const startOffset = (firstDay + 6) % 7; // Monday-start
+  const startOffset = firstDay; // Sunday-start
   const days = [];
   for (let i = 0; i < startOffset; i++) days.push(null);
   for (let d = 1; d <= daysInMonth; d++) days.push(d);
   return days;
+}
+
+// Abbreviate dollar amounts for compact cell display
+// 12345 -> "$12k", -1234 -> "-$1.2k", 567 -> "$567"
+function formatPnlCompact(pnl) {
+  if (pnl === null || pnl === undefined || isNaN(pnl)) return "";
+  const abs = Math.abs(pnl);
+  const sign = pnl < 0 ? "-" : "";
+  if (abs >= 10000) return `${sign}$${Math.round(abs / 1000)}k`;
+  if (abs >= 1000) return `${sign}$${(abs / 1000).toFixed(1)}k`;
+  return `${sign}$${Math.round(abs)}`;
 }
 
 function monthLabel(year, month) {
@@ -241,23 +252,52 @@ function Input({ value, onChange, placeholder, type = "text", style: s = {}, ...
 
 // ── Mini Calendar ───────────────────────────────────────────────────────────
 
-function MiniCalendar({ year, month, sessions, today, onDayClick, onPrev, onNext }) {
+function MiniCalendar({ year, month, sessions, today, onDayClick, onPrev, onNext, onToday }) {
   const days = getCalendarDays(year, month);
-  const sessionMap = {};
-  sessions.forEach(s => { sessionMap[s.date] = sessionResult(s); });
-  const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-  const dotColor = (result) => {
-    if (result === "green") return C.green;
-    if (result === "red") return C.coral;
-    if (result === "breakeven") return C.amber;
-    return C.textMuted;
+  // Build a map: dateStr -> { pnl, tradeCount, result }
+  const sessionMap = {};
+  sessions.forEach(s => {
+    sessionMap[s.date] = {
+      pnl: sessionPnl(s),
+      tradeCount: s.trades.length,
+      result: sessionResult(s),
+    };
+  });
+
+  // Sunday-start
+  const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  // Monthly P&L (only counts days in the visible month with a logged P&L)
+  const monthPrefix = `${year}-${String(month + 1).padStart(2, "0")}`;
+  let monthlyPnl = 0;
+  let monthlyHasAny = false;
+  sessions.forEach(s => {
+    if (s.date.startsWith(monthPrefix) && sessionMap[s.date]?.pnl !== null) {
+      monthlyPnl += sessionMap[s.date].pnl;
+      monthlyHasAny = true;
+    }
+  });
+
+  // Chunk days into rows of 7 so we can append a weekly-summary cell per row
+  const rows = [];
+  for (let i = 0; i < days.length; i += 7) rows.push(days.slice(i, i + 7));
+
+  const cellColor = (result) => {
+    if (result === "green") return { bg: `${C.green}14`, border: `${C.green}40`, text: C.green };
+    if (result === "red") return { bg: `${C.coral}14`, border: `${C.coral}40`, text: C.coral };
+    if (result === "breakeven") return { bg: `${C.amber}14`, border: `${C.amber}40`, text: C.amber };
+    return null;
   };
+
+  // Today button shown only when viewing a different month
+  const now = new Date();
+  const viewingCurrentMonth = year === now.getFullYear() && month === now.getMonth();
 
   return (
     <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 8, padding: "16px 16px 12px", marginBottom: 24 }}>
       {/* Month header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <button onClick={onPrev} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textMuted, fontFamily: F.mono, fontSize: 13, cursor: "pointer", padding: "4px 10px", transition: "color 0.15s" }}
           onMouseEnter={e => e.currentTarget.style.color = C.teal}
           onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>{"<"}</button>
@@ -266,39 +306,108 @@ function MiniCalendar({ year, month, sessions, today, onDayClick, onPrev, onNext
           onMouseEnter={e => e.currentTarget.style.color = C.teal}
           onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>{">"}</button>
       </div>
-      {/* Day-of-week headers */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4 }}>
+
+      {/* Monthly P&L + Today button row */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, minHeight: 18 }}>
+        <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, letterSpacing: 1 }}>MONTH</span>
+        {monthlyHasAny ? (
+          <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 500, color: monthlyPnl > 0 ? C.green : monthlyPnl < 0 ? C.coral : C.textMuted }}>
+            {formatPnl(monthlyPnl)}
+          </span>
+        ) : (
+          <span style={{ fontFamily: F.mono, fontSize: 12, color: C.textMuted }}>--</span>
+        )}
+        {!viewingCurrentMonth ? (
+          <button onClick={onToday} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textMuted, fontFamily: F.mono, fontSize: 10, letterSpacing: 0.5, cursor: "pointer", padding: "2px 8px", transition: "color 0.15s" }}
+            onMouseEnter={e => e.currentTarget.style.color = C.teal}
+            onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>TODAY</button>
+        ) : <span style={{ width: 48 }} />}
+      </div>
+
+      {/* Day-of-week headers + "Wk" column */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr) 0.9fr", gap: 2, marginBottom: 4 }}>
         {DOW.map(d => (
           <div key={d} style={{ textAlign: "center", fontFamily: F.mono, fontSize: 9, color: C.textMuted, letterSpacing: 0.5, padding: "2px 0" }}>{d}</div>
         ))}
+        <div style={{ textAlign: "center", fontFamily: F.mono, fontSize: 9, color: C.textMuted, letterSpacing: 0.5, padding: "2px 0" }}>Wk</div>
       </div>
-      {/* Days grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
-        {days.map((day, i) => {
-          if (day === null) return <div key={`empty-${i}`} />;
-          const ds = padDateStr(year, month, day);
-          const result = sessionMap[ds];
-          const isToday = ds === today;
-          const hasEntry = !!result;
-          const isFuture = ds > today;
+
+      {/* Weekly rows */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {rows.map((week, rowIdx) => {
+          // Weekly P&L across the days in this row (logged sessions only)
+          let weekPnl = 0;
+          let weekHasAny = false;
+          week.forEach(day => {
+            if (day === null) return;
+            const ds = padDateStr(year, month, day);
+            const entry = sessionMap[ds];
+            if (entry && entry.pnl !== null) {
+              weekPnl += entry.pnl;
+              weekHasAny = true;
+            }
+          });
+          const weekColor = weekHasAny ? (weekPnl > 0 ? C.green : weekPnl < 0 ? C.coral : C.amber) : C.textMuted;
 
           return (
-            <button key={ds} onClick={() => !isFuture && onDayClick(ds, hasEntry)}
-              style={{
+            <div key={rowIdx} style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr) 0.9fr", gap: 2 }}>
+              {week.map((day, i) => {
+                if (day === null) return <div key={`empty-${rowIdx}-${i}`} />;
+                const ds = padDateStr(year, month, day);
+                const entry = sessionMap[ds];
+                const result = entry?.result;
+                const pnl = entry?.pnl ?? null;
+                const isToday = ds === today;
+                const hasEntry = !!result;
+                const hasPnl = pnl !== null;
+                const isFuture = ds > today;
+                const colors = result ? cellColor(result) : null;
+
+                return (
+                  <button key={ds} onClick={() => !isFuture && onDayClick(ds, hasEntry)}
+                    title={hasPnl ? `${formatDate(ds)} · ${formatPnl(pnl)} · ${entry.tradeCount} trade${entry.tradeCount === 1 ? "" : "s"}` : formatDate(ds)}
+                    style={{
+                      aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                      background: isToday ? `${C.teal}12` : colors ? colors.bg : "transparent",
+                      border: isToday ? `1px solid ${C.teal}66` : colors ? `1px solid ${colors.border}` : "1px solid transparent",
+                      borderRadius: 6, cursor: isFuture ? "default" : "pointer",
+                      opacity: isFuture ? 0.3 : 1,
+                      padding: 2,
+                      transition: "all 0.15s",
+                      overflow: "hidden",
+                    }}
+                    onMouseEnter={e => { if (!isFuture && !isToday && !colors) e.currentTarget.style.borderColor = `${C.teal}33`; }}
+                    onMouseLeave={e => { if (!isFuture && !isToday && !colors) e.currentTarget.style.borderColor = "transparent"; }}>
+                    <span style={{ fontFamily: F.mono, fontSize: 10, lineHeight: 1, color: isToday ? C.teal : hasEntry ? C.textPrimary : C.textMuted }}>{day}</span>
+                    {hasPnl && (
+                      <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 500, lineHeight: 1.2, marginTop: 3, color: colors.text }}>{formatPnlCompact(pnl)}</span>
+                    )}
+                    {hasEntry && !hasPnl && (
+                      <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.textMuted, marginTop: 3 }} />
+                    )}
+                  </button>
+                );
+              })}
+              {/* Pad any short final row so the week cell aligns */}
+              {Array.from({ length: 7 - week.length }).map((_, i) => (
+                <div key={`pad-${rowIdx}-${i}`} />
+              ))}
+              {/* Weekly summary cell */}
+              <div style={{
                 aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                background: isToday ? `${C.teal}12` : "transparent",
-                border: isToday ? `1px solid ${C.teal}44` : hasEntry ? `1px solid ${C.border}` : "1px solid transparent",
-                borderRadius: 6, cursor: isFuture ? "default" : "pointer",
-                opacity: isFuture ? 0.3 : 1,
-                transition: "all 0.15s",
-              }}
-              onMouseEnter={e => { if (!isFuture && !isToday) e.currentTarget.style.borderColor = `${C.teal}33`; }}
-              onMouseLeave={e => { if (!isFuture && !isToday) e.currentTarget.style.borderColor = hasEntry ? C.border : "transparent"; }}>
-              <span style={{ fontFamily: F.mono, fontSize: 11, color: isToday ? C.teal : hasEntry ? C.textPrimary : C.textMuted }}>{day}</span>
-              {hasEntry && (
-                <div style={{ width: 5, height: 5, borderRadius: "50%", background: dotColor(result), marginTop: 2 }} />
-              )}
-            </button>
+                background: weekHasAny ? `${weekColor}0A` : "transparent",
+                borderLeft: weekHasAny ? `2px solid ${weekColor}55` : `1px solid ${C.border}`,
+                borderTop: "1px solid transparent", borderRight: "1px solid transparent", borderBottom: "1px solid transparent",
+                borderRadius: 0, padding: 2, overflow: "hidden",
+              }}>
+                <span style={{ fontFamily: F.mono, fontSize: 9, color: C.textMuted, letterSpacing: 0.3 }}>W{rowIdx + 1}</span>
+                {weekHasAny ? (
+                  <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 500, lineHeight: 1.2, marginTop: 3, color: weekColor }}>{formatPnlCompact(weekPnl)}</span>
+                ) : (
+                  <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, marginTop: 3 }}>--</span>
+                )}
+              </div>
+            </div>
           );
         })}
       </div>
@@ -1021,6 +1130,11 @@ export default function JournalClient() {
     if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); }
     else setCalMonth(calMonth + 1);
   };
+  const goToToday = () => {
+    const n = new Date();
+    setCalMonth(n.getMonth());
+    setCalYear(n.getFullYear());
+  };
 
   const saveSession = async (session) => {
     const exists = sessions.find(s => s.id === session.id);
@@ -1080,6 +1194,7 @@ export default function JournalClient() {
             sessions={sessions} today={today}
             onDayClick={handleDayClick}
             onPrev={prevMonth} onNext={nextMonth}
+            onToday={goToToday}
           />
 
           {sessions.length > 0 && <StatsPanel sessions={sessions} playbooks={playbooks} />}
