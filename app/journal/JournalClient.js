@@ -284,8 +284,8 @@ function MiniCalendar({ year, month, sessions, today, onDayClick, onPrev, onNext
   for (let i = 0; i < days.length; i += 7) rows.push(days.slice(i, i + 7));
 
   const cellColor = (result) => {
-    if (result === "green") return { bg: `${C.green}14`, border: `${C.green}40`, text: C.green };
-    if (result === "red") return { bg: `${C.coral}14`, border: `${C.coral}40`, text: C.coral };
+    if (result === "green") return { bg: `${C.tradeGreen}1A`, border: `${C.tradeGreen}59`, text: C.tradeGreen };
+    if (result === "red") return { bg: `${C.tradeRed}1A`, border: `${C.tradeRed}59`, text: C.tradeRed };
     if (result === "breakeven") return { bg: `${C.amber}14`, border: `${C.amber}40`, text: C.amber };
     return null;
   };
@@ -311,7 +311,7 @@ function MiniCalendar({ year, month, sessions, today, onDayClick, onPrev, onNext
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, minHeight: 18 }}>
         <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, letterSpacing: 1 }}>MONTH</span>
         {monthlyHasAny ? (
-          <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 500, color: monthlyPnl > 0 ? C.green : monthlyPnl < 0 ? C.coral : C.textMuted }}>
+          <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 500, color: monthlyPnl > 0 ? C.tradeGreen : monthlyPnl < 0 ? C.tradeRed : C.textMuted }}>
             {formatPnl(monthlyPnl)}
           </span>
         ) : (
@@ -347,7 +347,7 @@ function MiniCalendar({ year, month, sessions, today, onDayClick, onPrev, onNext
               weekHasAny = true;
             }
           });
-          const weekColor = weekHasAny ? (weekPnl > 0 ? C.green : weekPnl < 0 ? C.coral : C.amber) : C.textMuted;
+          const weekColor = weekHasAny ? (weekPnl > 0 ? C.tradeGreen : weekPnl < 0 ? C.tradeRed : C.amber) : C.textMuted;
 
           return (
             <div key={rowIdx} style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr) 0.9fr", gap: 2 }}>
