@@ -372,7 +372,7 @@ function MiniCalendar({ year, month, sessions, today, onDayClick, onPrev, onNext
                       border: isToday ? `1px solid ${C.teal}66` : colors ? `1px solid ${colors.border}` : "1px solid transparent",
                       borderRadius: 6, cursor: isFuture ? "default" : "pointer",
                       opacity: isFuture ? 0.3 : 1,
-                      padding: 2,
+                      padding: 0,
                       transition: "all 0.15s",
                       overflow: "hidden",
                     }}
@@ -380,7 +380,7 @@ function MiniCalendar({ year, month, sessions, today, onDayClick, onPrev, onNext
                     onMouseLeave={e => { if (!isFuture && !isToday && !colors) e.currentTarget.style.borderColor = "transparent"; }}>
                     <span style={{ fontFamily: F.mono, fontSize: 10, lineHeight: 1, color: isToday ? C.teal : hasEntry ? C.textPrimary : C.textMuted }}>{day}</span>
                     {hasPnl && (
-                      <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 500, lineHeight: 1.2, marginTop: 3, color: colors.text }}>{formatPnlCompact(pnl)}</span>
+                      <span style={{ fontFamily: F.mono, fontSize: 9, fontWeight: 500, lineHeight: 1.2, marginTop: 3, letterSpacing: "-0.3px", color: colors.text, whiteSpace: "nowrap" }}>{formatPnlCompact(pnl)}</span>
                     )}
                     {hasEntry && !hasPnl && (
                       <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.textMuted, marginTop: 3 }} />
@@ -398,11 +398,11 @@ function MiniCalendar({ year, month, sessions, today, onDayClick, onPrev, onNext
                 background: weekHasAny ? `${weekColor}0A` : "transparent",
                 borderLeft: weekHasAny ? `2px solid ${weekColor}55` : `1px solid ${C.border}`,
                 borderTop: "1px solid transparent", borderRight: "1px solid transparent", borderBottom: "1px solid transparent",
-                borderRadius: 0, padding: 2, overflow: "hidden",
+                borderRadius: 0, padding: 0, overflow: "hidden",
               }}>
                 <span style={{ fontFamily: F.mono, fontSize: 9, color: C.textMuted, letterSpacing: 0.3 }}>W{rowIdx + 1}</span>
                 {weekHasAny ? (
-                  <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 500, lineHeight: 1.2, marginTop: 3, color: weekColor }}>{formatPnlCompact(weekPnl)}</span>
+                  <span style={{ fontFamily: F.mono, fontSize: 9, fontWeight: 500, lineHeight: 1.2, marginTop: 3, letterSpacing: "-0.3px", color: weekColor, whiteSpace: "nowrap" }}>{formatPnlCompact(weekPnl)}</span>
                 ) : (
                   <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, marginTop: 3 }}>--</span>
                 )}
