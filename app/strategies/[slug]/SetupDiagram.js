@@ -21,15 +21,77 @@
 // Strategies without a `diagram` field render nothing.
 
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { C, F } from "@/lib/constants";
 
 // ── Shared shell ────────────────────────────────────────────────────────────
 
+// Per-step durations in ms. First and last steps dwell slightly longer —
+// step 1 has more to absorb (the setup), step 4 is the resting conclusion.
+const STEP_DURATIONS_MS = [3000, 2500, 2500, 4000];
+// Progress-bar tick — how often to update the fill within the current step.
+const PROGRESS_TICK_MS = 50;
+
 function DiagramShell({ title, color, steps, children }) {
   const [step, setStep] = useState(1);
+  const [isPlaying, setIsPlaying] = useState(false);
+  // Progress within the currently-playing step, 0 to 1. Only used for the
+  // per-step fill on the progress bar; doesn't drive step transitions.
+  const [progress, setProgress] = useState(0);
+  const stepStartRef = useRef(0);
   const activeColor = color || C.teal;
   const activeCaption = steps[step - 1];
+  const totalSteps = steps.length;
+
+  // Auto-advance effect. Runs whenever playback state changes or the current
+  // step changes while playing. Cleans up its own timers on unmount or pause.
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    // If we're sitting on the last step, finish playback cleanly.
+    if (step >= totalSteps) {
+      setIsPlaying(false);
+      setProgress(1);
+      return;
+    }
+
+    const duration = STEP_DURATIONS_MS[step - 1] ?? 2500;
+    stepStartRef.current = Date.now();
+    setProgress(0);
+
+    // Progress bar ticker — updates visual fill without triggering step changes
+    const progressInterval = setInterval(() => {
+      const elapsed = Date.now() - stepStartRef.current;
+      const pct = Math.min(1, elapsed / duration);
+      setProgress(pct);
+    }, PROGRESS_TICK_MS);
+
+    // Step advance — fires once when the current step's duration ends
+    const advanceTimeout = setTimeout(() => {
+      setStep((s) => Math.min(totalSteps, s + 1));
+    }, duration);
+
+    return () => {
+      clearInterval(progressInterval);
+      clearTimeout(advanceTimeout);
+    };
+  }, [isPlaying, step, totalSteps]);
+
+  const handlePlayToggle = () => {
+    if (isPlaying) {
+      setIsPlaying(false);
+      return;
+    }
+    // If the diagram is already on the last step, restart from step 1
+    if (step >= totalSteps) setStep(1);
+    setIsPlaying(true);
+  };
+
+  // Any manual step click stops playback — the user is taking over
+  const handleStepClick = (n) => {
+    setIsPlaying(false);
+    setStep(n);
+  };
 
   return (
     <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 8, padding: "20px 22px 16px", marginBottom: 32 }}>
@@ -38,12 +100,43 @@ function DiagramShell({ title, color, steps, children }) {
           <p style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, letterSpacing: 1, margin: "0 0 4px" }}>SETUP DIAGRAM</p>
           <p style={{ fontFamily: F.mono, fontSize: 13, color: C.textPrimary, fontWeight: 500, margin: 0 }}>{title}</p>
         </div>
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+          {/* Play / pause button */}
+          <button
+            onClick={handlePlayToggle}
+            aria-label={isPlaying ? "Pause diagram" : "Play diagram"}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 5,
+              padding: "5px 10px",
+              background: isPlaying ? `${activeColor}2E` : "transparent",
+              border: `1px solid ${isPlaying ? `${activeColor}80` : C.border}`,
+              borderRadius: 3,
+              color: isPlaying ? activeColor : C.textMuted,
+              fontFamily: F.mono, fontSize: 10, cursor: "pointer",
+              transition: "all 0.15s",
+            }}>
+            {isPlaying ? (
+              <svg width="8" height="9" viewBox="0 0 8 9" fill="currentColor" aria-hidden="true">
+                <rect x="0" y="0" width="3" height="9" />
+                <rect x="5" y="0" width="3" height="9" />
+              </svg>
+            ) : (
+              <svg width="8" height="9" viewBox="0 0 8 9" fill="currentColor" aria-hidden="true">
+                <path d="M0 0 L8 4.5 L0 9 Z" />
+              </svg>
+            )}
+            {isPlaying ? "pause" : "play"}
+          </button>
+
+          {/* Divider between play control and step buttons */}
+          <div style={{ width: 1, height: 16, background: C.border, margin: "0 2px" }} />
+
+          {/* Step buttons */}
           {steps.map((s, i) => {
             const n = i + 1;
             const active = step === n;
             return (
-              <button key={n} onClick={() => setStep(n)}
+              <button key={n} onClick={() => handleStepClick(n)}
                 style={{
                   padding: "5px 10px",
                   background: active ? `${activeColor}2E` : "transparent",
@@ -59,6 +152,34 @@ function DiagramShell({ title, color, steps, children }) {
           })}
         </div>
       </div>
+
+      {/* Progress bar — visible only while playing. Solid fill for completed
+          steps, partial fill for the step currently advancing. */}
+      {isPlaying && (
+        <div style={{ display: "flex", gap: 3, marginBottom: 10, padding: "0 1px" }}>
+          {steps.map((_, i) => {
+            const n = i + 1;
+            let fill = 0;
+            if (n < step) fill = 1;
+            else if (n === step) fill = progress;
+            return (
+              <div key={n} style={{
+                flex: 1, height: 2, borderRadius: 1,
+                background: fill === 1 ? activeColor : C.border,
+                position: "relative", overflow: "hidden",
+              }}>
+                {fill > 0 && fill < 1 && (
+                  <div style={{
+                    position: "absolute", left: 0, top: 0, bottom: 0,
+                    width: `${fill * 100}%`, background: `${activeColor}66`,
+                    transition: `width ${PROGRESS_TICK_MS}ms linear`,
+                  }} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div style={{ marginBottom: 14 }}>
         {typeof children === "function" ? children(step) : children}
