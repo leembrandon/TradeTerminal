@@ -351,7 +351,7 @@ function PlaybookCard({ playbook, onOpen, onDelete, onCopy }) {
 
 // ── Playbook Editor ──────────────────────────────────────────────────────────
 
-function PlaybookEditor({ playbook, onSave, onBack }) {
+function PlaybookEditor({ playbook, onSave, onBack, user }) {
   const [pb, setPb] = useState(playbook);
   const [saved, setSaved] = useState(false);
 
@@ -970,6 +970,7 @@ export default function PlaybookClient() {
             playbook={activePlaybook}
             onSave={savePlaybook}
             onBack={() => setView("view")}
+            user={user}
           />
           <footer style={{ borderTop: `1px solid ${C.border}`, padding: "28px 0 48px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
             <div>
