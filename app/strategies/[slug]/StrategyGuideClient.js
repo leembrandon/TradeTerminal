@@ -5,6 +5,7 @@ import { C, F } from "@/lib/constants";
 import { getSiteUrl } from "@/lib/utils";
 import NavBar from "@/app/NavBar";
 import SetupDiagram from "./SetupDiagram";
+import ContractSpecsInline from "./ContractSpecsInline";
 
 function ShareBtn({ path, label }) {
   const [toast, setToast] = useState(false);
@@ -103,7 +104,18 @@ export default function StrategyGuideClient({ strategy, prev, next }) {
           <div style={{ height: 1, background: C.border, marginBottom: 36 }} />
 
           {/* Interactive setup diagram (rendered only if strategy data includes a diagram) */}
-          {strategy.diagram && <SetupDiagram diagram={strategy.diagram} color={strategy.color} />}
+          {strategy.diagram && <SetupDiagram diagram={strategy.diagram} color={strategy.color} slug={strategy.slug} />}
+
+          {/* Inline contract specs + trade-math (rendered only if the diagram supplies a symbol) */}
+          {strategy.diagram?.symbol && (
+            <ContractSpecsInline
+              symbol={strategy.diagram.symbol}
+              entry={strategy.diagram.entry}
+              stop={strategy.diagram.stop}
+              target={strategy.diagram.target}
+              color={strategy.color}
+            />
+          )}
 
           {/* Sections */}
           {strategy.sections.map(section => (
