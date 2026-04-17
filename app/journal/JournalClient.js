@@ -6,6 +6,7 @@ import { getSiteUrl } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { fetchSessions, fetchPlaybooks as fetchPlaybooksRemote, upsertSession, deleteSession as deleteSessionRemote } from "@/lib/storage";
 import NavBar from "@/app/NavBar";
+import EquityCurve from "./EquityCurve";
 
 const JOURNAL_KEY = "tt_journal_v2";
 const PLAYBOOK_KEY = "tt_playbooks";
@@ -1198,6 +1199,9 @@ export default function JournalClient() {
           />
 
           {sessions.length > 0 && <StatsPanel sessions={sessions} playbooks={playbooks} />}
+
+          {/* Equity Curve */}
+          <EquityCurve sessions={sessions} />
 
           {/* Filters */}
           {sessions.length > 2 && (
