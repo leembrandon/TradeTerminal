@@ -21,7 +21,7 @@
 // Strategies without a `diagram` field render nothing.
 
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { C, F } from "@/lib/constants";
 
 // ── Shared shell ────────────────────────────────────────────────────────────
@@ -31,197 +31,24 @@ import { C, F } from "@/lib/constants";
 const STEP_DURATIONS_MS = [3000, 2500, 2500, 4000];
 // Progress-bar tick — how often to update the fill within the current step.
 const PROGRESS_TICK_MS = 50;
-// PNG export dimensions. 1200x675 is a clean 16:9 that works on Twitter/X,
-// Discord, Slack, and most embeds. Native resolution (2x for retina).
-const EXPORT_W = 1200;
-const EXPORT_H = 675;
-const EXPORT_SCALE = 2;
 
-// Detect whether navigator.share is available for mobile-style sharing
-function hasNativeShare() {
-  return typeof navigator !== "undefined" && typeof navigator.share === "function";
-}
-
-// Build the canonical shareable URL for a given step
-function buildShareUrl(step) {
-  if (typeof window === "undefined") return "";
-  const url = new URL(window.location.href);
-  url.searchParams.set("step", String(step));
-  url.hash = "";
-  return url.toString();
-}
-
-// Export the SVG + framing to a downloadable PNG.
-//   svgEl      — the live SVG element to render
-//   title      — displayed at the top of the exported image
-//   caption    — displayed at the bottom
-//   stepLabel  — short step label shown with the caption
-//   accent     — the strategy's accent color (hex)
-//   filename   — the download filename without extension
-async function exportDiagramAsPng({ svgEl, title, caption, stepLabel, accent, filename }) {
-  if (!svgEl) return;
-
-  // Serialize the SVG to a string. Clone first so we don't disturb the live
-  // node, and give the clone an explicit width/height so rasterization is
-  // predictable regardless of layout.
-  const clone = svgEl.cloneNode(true);
-  const vb = svgEl.getAttribute("viewBox") || "0 0 600 320";
-  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-  clone.setAttribute("viewBox", vb);
-  const svgString = new XMLSerializer().serializeToString(clone);
-
-  // Encode to a data URL. The unescape/encodeURIComponent dance handles
-  // non-ASCII characters (e.g. the · separator) safely across browsers.
-  const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-  const svgUrl = URL.createObjectURL(svgBlob);
-
-  try {
-    // Load the SVG as an Image so we can draw it to a canvas
-    const img = await new Promise((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = reject;
-      i.src = svgUrl;
-    });
-
-    // Compose the final PNG with title, chart, caption, and wordmark
-    const canvas = document.createElement("canvas");
-    canvas.width = EXPORT_W * EXPORT_SCALE;
-    canvas.height = EXPORT_H * EXPORT_SCALE;
-    const ctx = canvas.getContext("2d");
-    ctx.scale(EXPORT_SCALE, EXPORT_SCALE);
-
-    // Background — matches the site's card color
-    ctx.fillStyle = C.bgCard;
-    ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
-
-    // Accent strip at the top — visual signal of brand continuity
-    ctx.fillStyle = accent;
-    ctx.fillRect(0, 0, EXPORT_W, 4);
-
-    // Title block — mono font, primary color
-    ctx.fillStyle = C.textMuted;
-    ctx.font = "500 14px 'JetBrains Mono', 'Fira Code', monospace";
-    ctx.textBaseline = "top";
-    ctx.fillText("SETUP DIAGRAM", 60, 34);
-    ctx.fillStyle = C.textPrimary;
-    ctx.font = "500 20px 'JetBrains Mono', 'Fira Code', monospace";
-    ctx.fillText(title, 60, 56);
-
-    // Render SVG centered in the middle band
-    // Chart area: y from 110 to 510, centered horizontally
-    const chartY = 110;
-    const chartH = 400;
-    const chartPadding = 60;
-    const chartW = EXPORT_W - chartPadding * 2;
-    const naturalAspect = 600 / 320; // matches VB_W / VB_H
-    // Fit chart inside the box, maintaining aspect ratio
-    let drawW = chartW;
-    let drawH = drawW / naturalAspect;
-    if (drawH > chartH) {
-      drawH = chartH;
-      drawW = drawH * naturalAspect;
-    }
-    const drawX = (EXPORT_W - drawW) / 2;
-    const drawY = chartY + (chartH - drawH) / 2;
-    ctx.drawImage(img, drawX, drawY, drawW, drawH);
-
-    // Caption — amber accent strip with step label + caption text
-    const capY = 540;
-    ctx.fillStyle = accent;
-    ctx.fillRect(60, capY, 3, 60);
-    ctx.fillStyle = accent;
-    ctx.font = "500 14px 'JetBrains Mono', 'Fira Code', monospace";
-    ctx.fillText(stepLabel, 78, capY + 12);
-    ctx.fillStyle = C.textSecondary;
-    ctx.font = "400 13px 'IBM Plex Sans', system-ui, sans-serif";
-    // Word-wrap the caption to fit within the canvas width
-    const captionText = caption.length > 180 ? caption.slice(0, 177) + "…" : caption;
-    wrapText(ctx, captionText, 78, capY + 32, EXPORT_W - 140, 18);
-
-    // Wordmark — bottom-right, muted
-    ctx.fillStyle = C.textMuted;
-    ctx.font = "500 12px 'JetBrains Mono', 'Fira Code', monospace";
-    ctx.textAlign = "right";
-    ctx.fillText("tradeterminal.org", EXPORT_W - 60, EXPORT_H - 28);
-    ctx.textAlign = "left";
-
-    // Convert to blob and trigger download
-    await new Promise((resolve) => {
-      canvas.toBlob((blob) => {
-        if (!blob) { resolve(); return; }
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${filename}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        resolve();
-      }, "image/png");
-    });
-  } finally {
-    URL.revokeObjectURL(svgUrl);
-  }
-}
-
-// Simple word-wrap helper for canvas text
-function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-  const words = text.split(" ");
-  let line = "";
-  let curY = y;
-  for (const word of words) {
-    const test = line ? line + " " + word : word;
-    if (ctx.measureText(test).width > maxWidth && line) {
-      ctx.fillText(line, x, curY);
-      line = word;
-      curY += lineHeight;
-    } else {
-      line = test;
-    }
-  }
-  if (line) ctx.fillText(line, x, curY);
-}
-
-function DiagramShell({ title, color, steps, children, slug }) {
+function DiagramShell({ title, color, steps, children }) {
   const [step, setStep] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
+  // Progress within the currently-playing step, 0 to 1. Only used for the
+  // per-step fill on the progress bar; doesn't drive step transitions.
   const [progress, setProgress] = useState(0);
-  const [shareMenuOpen, setShareMenuOpen] = useState(false);
-  const [toast, setToast] = useState(null);
   const stepStartRef = useRef(0);
-  const svgContainerRef = useRef(null);
-  const shareMenuRef = useRef(null);
   const activeColor = color || C.teal;
   const activeCaption = steps[step - 1];
   const totalSteps = steps.length;
 
-  // Read ?step=N from the URL after mount. Done client-side (not with
-  // useSearchParams) so the strategy page stays statically generated.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const param = parseInt(new URLSearchParams(window.location.search).get("step") ?? "", 10);
-    if (Number.isFinite(param) && param >= 1 && param <= totalSteps) setStep(param);
-    // Only runs on mount — subsequent step changes are handled by the sync effect below
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Sync step state back to URL when it changes (so share button captures
-  // the right step and back/forward navigation works). Uses replaceState
-  // to avoid cluttering history.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    if (step === 1) url.searchParams.delete("step");
-    else url.searchParams.set("step", String(step));
-    window.history.replaceState({}, "", url.toString());
-  }, [step]);
-
-  // Auto-advance effect — same as before
+  // Auto-advance effect. Runs whenever playback state changes or the current
+  // step changes while playing. Cleans up its own timers on unmount or pause.
   useEffect(() => {
     if (!isPlaying) return;
 
+    // If we're sitting on the last step, finish playback cleanly.
     if (step >= totalSteps) {
       setIsPlaying(false);
       setProgress(1);
@@ -232,12 +59,14 @@ function DiagramShell({ title, color, steps, children, slug }) {
     stepStartRef.current = Date.now();
     setProgress(0);
 
+    // Progress bar ticker — updates visual fill without triggering step changes
     const progressInterval = setInterval(() => {
       const elapsed = Date.now() - stepStartRef.current;
       const pct = Math.min(1, elapsed / duration);
       setProgress(pct);
     }, PROGRESS_TICK_MS);
 
+    // Step advance — fires once when the current step's duration ends
     const advanceTimeout = setTimeout(() => {
       setStep((s) => Math.min(totalSteps, s + 1));
     }, duration);
@@ -248,115 +77,44 @@ function DiagramShell({ title, color, steps, children, slug }) {
     };
   }, [isPlaying, step, totalSteps]);
 
-  // Close share menu when clicking outside
-  useEffect(() => {
-    if (!shareMenuOpen) return;
-    const handler = (e) => {
-      if (shareMenuRef.current && !shareMenuRef.current.contains(e.target)) {
-        setShareMenuOpen(false);
-      }
-    };
-    // Small timeout prevents the opening click from immediately closing
-    const t = setTimeout(() => document.addEventListener("mousedown", handler), 0);
-    return () => {
-      clearTimeout(t);
-      document.removeEventListener("mousedown", handler);
-    };
-  }, [shareMenuOpen]);
-
-  // Auto-dismiss toast
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2200);
-    return () => clearTimeout(t);
-  }, [toast]);
-
   const handlePlayToggle = () => {
     if (isPlaying) {
       setIsPlaying(false);
       return;
     }
+    // If the diagram is already on the last step, restart from step 1
     if (step >= totalSteps) setStep(1);
     setIsPlaying(true);
   };
 
+  // Any manual step click stops playback — the user is taking over
   const handleStepClick = (n) => {
     setIsPlaying(false);
     setStep(n);
   };
 
-  // ── Share actions ──────────────────────────────────────────────────────
-
-  const handleCopyLink = useCallback(() => {
-    const url = buildShareUrl(step);
-    navigator.clipboard.writeText(url).then(
-      () => { setToast("link copied"); setShareMenuOpen(false); },
-      () => { setToast("copy failed"); setShareMenuOpen(false); }
-    );
-  }, [step]);
-
-  const handleDownloadPng = useCallback(async () => {
-    setShareMenuOpen(false);
-    setToast("preparing image…");
-    const svgEl = svgContainerRef.current?.querySelector("svg");
-    if (!svgEl) { setToast("couldn't find diagram"); return; }
-
-    // Compose a filename from slug + step
-    const stepPart = activeCaption.label.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
-    const filename = `${slug || "diagram"}-step-${step}-${stepPart}`;
-    try {
-      await exportDiagramAsPng({
-        svgEl,
-        title,
-        caption: activeCaption.text,
-        stepLabel: `${step}. ${activeCaption.label}`,
-        accent: activeColor,
-        filename,
-      });
-      setToast("image downloaded");
-    } catch (err) {
-      setToast("export failed");
-    }
-  }, [activeCaption, title, activeColor, step, slug]);
-
-  const handleNativeShare = useCallback(async () => {
-    setShareMenuOpen(false);
-    try {
-      await navigator.share({
-        title: title,
-        text: `${title} — ${activeCaption.text}`,
-        url: buildShareUrl(step),
-      });
-    } catch {
-      // User cancelled or share failed — silent, no toast needed
-    }
-  }, [title, activeCaption, step]);
-
-  // Base styles for buttons in the header row — extracted so we can reuse
-  // consistent padding/border without repeating inline styles
-  const headerButtonStyle = (active) => ({
-    padding: "5px 10px",
-    background: active ? `${activeColor}2E` : "transparent",
-    border: `1px solid ${active ? `${activeColor}80` : C.border}`,
-    borderRadius: 3,
-    color: active ? activeColor : C.textMuted,
-    fontFamily: F.mono, fontSize: 10, cursor: "pointer",
-    transition: "all 0.15s",
-  });
-
   return (
-    <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 8, padding: "20px 22px 16px", marginBottom: 32, position: "relative" }}>
+    <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 8, padding: "20px 22px 16px", marginBottom: 32 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
         <div>
           <p style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, letterSpacing: 1, margin: "0 0 4px" }}>SETUP DIAGRAM</p>
           <p style={{ fontFamily: F.mono, fontSize: 13, color: C.textPrimary, fontWeight: 500, margin: 0 }}>{title}</p>
         </div>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
-          {/* Play / pause */}
+          {/* Play / pause button */}
           <button
             onClick={handlePlayToggle}
             aria-label={isPlaying ? "Pause diagram" : "Play diagram"}
-            style={{ ...headerButtonStyle(isPlaying), display: "inline-flex", alignItems: "center", gap: 5 }}>
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 5,
+              padding: "5px 10px",
+              background: isPlaying ? `${activeColor}2E` : "transparent",
+              border: `1px solid ${isPlaying ? `${activeColor}80` : C.border}`,
+              borderRadius: 3,
+              color: isPlaying ? activeColor : C.textMuted,
+              fontFamily: F.mono, fontSize: 10, cursor: "pointer",
+              transition: "all 0.15s",
+            }}>
             {isPlaying ? (
               <svg width="8" height="9" viewBox="0 0 8 9" fill="currentColor" aria-hidden="true">
                 <rect x="0" y="0" width="3" height="9" />
@@ -370,91 +128,33 @@ function DiagramShell({ title, color, steps, children, slug }) {
             {isPlaying ? "pause" : "play"}
           </button>
 
+          {/* Divider between play control and step buttons */}
           <div style={{ width: 1, height: 16, background: C.border, margin: "0 2px" }} />
 
           {/* Step buttons */}
           {steps.map((s, i) => {
             const n = i + 1;
+            const active = step === n;
             return (
               <button key={n} onClick={() => handleStepClick(n)}
-                style={headerButtonStyle(step === n)}>
+                style={{
+                  padding: "5px 10px",
+                  background: active ? `${activeColor}2E` : "transparent",
+                  border: `1px solid ${active ? `${activeColor}80` : C.border}`,
+                  borderRadius: 3,
+                  color: active ? activeColor : C.textMuted,
+                  fontFamily: F.mono, fontSize: 10, cursor: "pointer",
+                  transition: "all 0.15s",
+                }}>
                 {n} {s.label}
               </button>
             );
           })}
-
-          <div style={{ width: 1, height: 16, background: C.border, margin: "0 2px" }} />
-
-          {/* Share button + dropdown menu */}
-          <div ref={shareMenuRef} style={{ position: "relative" }}>
-            <button
-              onClick={() => setShareMenuOpen((v) => !v)}
-              aria-label="Share diagram"
-              aria-haspopup="menu"
-              aria-expanded={shareMenuOpen}
-              style={{ ...headerButtonStyle(shareMenuOpen), display: "inline-flex", alignItems: "center", gap: 5 }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <circle cx="18" cy="5" r="3" />
-                <circle cx="6" cy="12" r="3" />
-                <circle cx="18" cy="19" r="3" />
-                <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
-                <line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
-              </svg>
-              share
-            </button>
-
-            {shareMenuOpen && (
-              <div role="menu"
-                style={{
-                  position: "absolute", top: "calc(100% + 6px)", right: 0,
-                  background: C.bgCard, border: `1px solid ${activeColor}40`,
-                  borderRadius: 6, padding: 4, minWidth: 220, zIndex: 20,
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-                }}>
-                <ShareMenuItem
-                  onClick={handleCopyLink}
-                  icon={
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
-                      <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
-                    </svg>
-                  }
-                  label="Copy link to this step"
-                  sublabel={`includes ?step=${step}`}
-                />
-                <ShareMenuItem
-                  onClick={handleDownloadPng}
-                  icon={
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                      <polyline points="7 10 12 15 17 10" />
-                      <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                  }
-                  label="Download as image"
-                  sublabel={`PNG · step ${step}`}
-                />
-                {hasNativeShare() && (
-                  <ShareMenuItem
-                    onClick={handleNativeShare}
-                    icon={
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
-                        <polyline points="16 6 12 2 8 6" />
-                        <line x1="12" y1="2" x2="12" y2="15" />
-                      </svg>
-                    }
-                    label="Share via…"
-                    sublabel="system share sheet"
-                  />
-                )}
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
-      {/* Progress bar */}
+      {/* Progress bar — visible only while playing. Solid fill for completed
+          steps, partial fill for the step currently advancing. */}
       {isPlaying && (
         <div style={{ display: "flex", gap: 3, marginBottom: 10, padding: "0 1px" }}>
           {steps.map((_, i) => {
@@ -481,8 +181,7 @@ function DiagramShell({ title, color, steps, children, slug }) {
         </div>
       )}
 
-      {/* The SVG lives in this ref'd div so the PNG exporter can find it */}
-      <div ref={svgContainerRef} style={{ marginBottom: 14 }}>
+      <div style={{ marginBottom: 14 }}>
         {typeof children === "function" ? children(step) : children}
       </div>
 
@@ -490,45 +189,7 @@ function DiagramShell({ title, color, steps, children, slug }) {
         <span style={{ color: activeColor, fontFamily: F.mono, marginRight: 8 }}>{step}.</span>
         {activeCaption.text}
       </div>
-
-      {/* Toast — shown after share actions. Floats over the diagram. */}
-      {toast && (
-        <div style={{
-          position: "absolute", top: 16, right: 20,
-          padding: "6px 12px",
-          background: C.bgSurface,
-          border: `1px solid ${activeColor}50`,
-          borderRadius: 4,
-          fontFamily: F.mono, fontSize: 10, color: activeColor,
-          zIndex: 30,
-        }}>
-          {toast}
-        </div>
-      )}
     </div>
-  );
-}
-
-// Menu item for the share dropdown — reusable row with icon, label, sublabel
-function ShareMenuItem({ onClick, icon, label, sublabel }) {
-  return (
-    <button
-      onClick={onClick}
-      role="menuitem"
-      style={{
-        display: "flex", alignItems: "flex-start", gap: 10, width: "100%",
-        padding: "9px 12px", background: "transparent", border: "none",
-        borderRadius: 4, color: C.textPrimary, fontFamily: F.mono, fontSize: 11,
-        cursor: "pointer", textAlign: "left", transition: "background 0.12s",
-      }}
-      onMouseEnter={(e) => e.currentTarget.style.background = C.bgSurface}
-      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
-      <span style={{ color: C.textMuted, marginTop: 1, flexShrink: 0 }}>{icon}</span>
-      <span style={{ flex: 1 }}>
-        <span style={{ display: "block" }}>{label}</span>
-        <span style={{ display: "block", fontSize: 9, color: C.textMuted, marginTop: 2 }}>{sublabel}</span>
-      </span>
-    </button>
   );
 }
 
@@ -611,7 +272,7 @@ function LevelMarker({ x, y, color, label, labelOffset, xEnd }) {
 // Data shape:
 //   { type: "orb", title, priceRange: [min, max], orHigh, orLow, entry, stop, target }
 
-function OrbDiagram({ diagram, color, slug }) {
+function OrbDiagram({ diagram, color }) {
   const { title, priceRange, orHigh, orLow, entry, stop, target } = diagram;
   const accent = color || C.teal;
 
@@ -635,7 +296,7 @@ function OrbDiagram({ diagram, color, slug }) {
   const breakX = 320;
 
   return (
-    <DiagramShell title={title} color={accent} steps={steps} slug={slug}>
+    <DiagramShell title={title} color={accent} steps={steps}>
       {(step) => (
         <svg viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ width: "100%", height: "auto", display: "block" }}
           role="img" aria-label={`Opening range breakout diagram. Step ${step} of 4.`}>
@@ -719,7 +380,7 @@ function OrbDiagram({ diagram, color, slug }) {
 // Data shape:
 //   { type: "vwapPullback", title, priceRange: [min, max], vwapStart, vwapEnd, entry, stop, target }
 
-function VwapPullbackDiagram({ diagram, color, slug }) {
+function VwapPullbackDiagram({ diagram, color }) {
   const { title, priceRange, vwapStart, vwapEnd, entry, stop, target } = diagram;
   const accent = color || C.purple;
 
@@ -750,7 +411,7 @@ function VwapPullbackDiagram({ diagram, color, slug }) {
   const entryX = 310;
 
   return (
-    <DiagramShell title={title} color={accent} steps={steps} slug={slug}>
+    <DiagramShell title={title} color={accent} steps={steps}>
       {(step) => (
         <svg viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ width: "100%", height: "auto", display: "block" }}
           role="img" aria-label={`VWAP pullback diagram. Step ${step} of 4.`}>
@@ -882,7 +543,7 @@ function VwapPullbackDiagram({ diagram, color, slug }) {
 //
 // Canonical gap-up fade short. For gap-down + long, same pedagogy mirrored.
 
-function GapFillDiagram({ diagram, color, slug }) {
+function GapFillDiagram({ diagram, color }) {
   const { title, priceRange, priorClose, openPrice, entry, stop, target } = diagram;
   const accent = color || C.amber;
 
@@ -905,7 +566,7 @@ function GapFillDiagram({ diagram, color, slug }) {
   const openY = priceToY(openPrice);
 
   return (
-    <DiagramShell title={title} color={accent} steps={steps} slug={slug}>
+    <DiagramShell title={title} color={accent} steps={steps}>
       {(step) => (
         <svg viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ width: "100%", height: "auto", display: "block" }}
           role="img" aria-label={`Gap fill diagram. Step ${step} of 4.`}>
@@ -996,7 +657,7 @@ function GapFillDiagram({ diagram, color, slug }) {
 // Data shape:
 //   { type: "srBounce", title, priceRange: [min, max], levelHigh, levelLow, entry, stop, target }
 
-function SrBounceDiagram({ diagram, color, slug }) {
+function SrBounceDiagram({ diagram, color }) {
   const { title, priceRange, levelHigh, levelLow, entry, stop, target } = diagram;
   const accent = color || C.coral;
 
@@ -1020,7 +681,7 @@ function SrBounceDiagram({ diagram, color, slug }) {
   const rejectX = 310;
 
   return (
-    <DiagramShell title={title} color={accent} steps={steps} slug={slug}>
+    <DiagramShell title={title} color={accent} steps={steps}>
       {(step) => (
         <svg viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ width: "100%", height: "auto", display: "block" }}
           role="img" aria-label={`Support and resistance bounce diagram. Step ${step} of 4.`}>
@@ -1135,7 +796,7 @@ function SrBounceDiagram({ diagram, color, slug }) {
 // Uses a 9-EMA / 21-EMA pullback on a 5-minute chart. Intraday, prop-firm
 // friendly, flat by end of session. No swing/daily exposure.
 
-function TrendFollowDiagram({ diagram, color, slug }) {
+function TrendFollowDiagram({ diagram, color }) {
   const {
     title, priceRange,
     fastEmaStart, fastEmaEnd,
@@ -1173,7 +834,7 @@ function TrendFollowDiagram({ diagram, color, slug }) {
   const entryX = 320;
 
   return (
-    <DiagramShell title={title} color={accent} steps={steps} slug={slug}>
+    <DiagramShell title={title} color={accent} steps={steps}>
       {(step) => (
         <svg viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ width: "100%", height: "auto", display: "block" }}
           role="img" aria-label={`Intraday trend following with EMA pullback diagram. Step ${step} of 4.`}>
@@ -1308,9 +969,9 @@ const templates = {
 
 // ── Main export ─────────────────────────────────────────────────────────────
 
-export default function SetupDiagram({ diagram, color, slug }) {
+export default function SetupDiagram({ diagram, color }) {
   if (!diagram || !diagram.type) return null;
   const Template = templates[diagram.type];
   if (!Template) return null;
-  return <Template diagram={diagram} color={color} slug={slug} />;
+  return <Template diagram={diagram} color={color} />;
 }
