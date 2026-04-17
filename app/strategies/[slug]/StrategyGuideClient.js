@@ -4,6 +4,7 @@ import Link from "next/link";
 import { C, F } from "@/lib/constants";
 import { getSiteUrl } from "@/lib/utils";
 import NavBar from "@/app/NavBar";
+import SetupDiagram from "./SetupDiagram";
 
 function ShareBtn({ path, label }) {
   const [toast, setToast] = useState(false);
@@ -100,6 +101,9 @@ export default function StrategyGuideClient({ strategy, prev, next }) {
           </div>
 
           <div style={{ height: 1, background: C.border, marginBottom: 36 }} />
+
+          {/* Interactive setup diagram (rendered only if strategy data includes a diagram) */}
+          {strategy.diagram && <SetupDiagram diagram={strategy.diagram} color={strategy.color} />}
 
           {/* Sections */}
           {strategy.sections.map(section => (
